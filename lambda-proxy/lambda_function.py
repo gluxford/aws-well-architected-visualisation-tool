@@ -9,8 +9,8 @@ import botocore
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Allowed IP address
-ALLOWED_IP = "159.196.13.45/32"
+# Allowed IP address - make this configurable via environment variable
+ALLOWED_IP = os.environ.get('ALLOWED_IP', '159.196.13.45/32')
 
 def is_ip_allowed(source_ip):
     """Check if the source IP is in the allowed range"""
@@ -21,6 +21,125 @@ def is_ip_allowed(source_ip):
     except Exception as e:
         logger.error(f"Error checking IP address: {str(e)}")
         return False
+
+def normalize_risk_counts(risk_counts):
+    """Normalize risk counts to handle UNANSWERED questions"""
+    normalized = {
+        'HIGH': risk_counts.get('HIGH', 0),
+        'MEDIUM': risk_counts.get('MEDIUM', 0),
+        'NONE': risk_counts.get('NONE', 0),
+        'UNANSWERED': risk_counts.get('UNANSWERED', 0),
+        'NOT_APPLICABLE': risk_counts.get('NOT_APPLICABLE', 0)
+    }
+    
+    # Calculate compliance percentage
+    total_questions = sum(normalized.values())
+    if total_questions > 0:
+        compliant = normalized['NONE']
+        compliance_percentage = round((compliant / total_questions) * 100, 1)
+    else:
+        compliance_percentage = 0
+    
+    return normalized, compliance_percentage
+
+def get_workload_data(wa_client, params, headers):
+    """Custom operation to get comprehensive workload data"""
+    try:
+        workload_id = params.get('WorkloadId')
+        if not workload_id:
+            return {
+                'statusCode': 400,
+                'headers': headers,
+                'body': json.dumps({'error': 'WorkloadId is required'})
+            }
+        
+        logger.info(f"Getting comprehensive data for workload: {workload_id}")
+        
+        # Get workload details
+        workload_response = wa_client.get_workload(WorkloadId=workload_id)
+        workload = workload_response['Workload']
+        
+        # Get lens reviews
+        lens_reviews_response = wa_client.list_lens_reviews(WorkloadId=workload_id)
+        
+        # Find the Well-Architected Framework lens
+        wa_lens = None
+        for lens in lens_reviews_response['LensReviewSummaries']:
+            if lens['LensAlias'] == 'wellarchitected':
+                wa_lens = lens
+                break
+        
+        if not wa_lens:
+            logger.warning(f"Well-Architected Framework lens not found for workload {workload_id}")
+            return {
+                'statusCode': 404,
+                'headers': headers,
+                'body': json.dumps({'error': 'Well-Architected Framework lens not found for this workload'})
+            }
+        
+        # Get detailed lens review
+        lens_review_response = wa_client.get_lens_review(
+            WorkloadId=workload_id,
+            LensAlias='wellarchitected'
+        )
+        lens_review = lens_review_response['LensReview']
+        
+        # Normalize risk counts
+        normalized_risks, compliance_percentage = normalize_risk_counts(workload['RiskCounts'])
+        
+        # Process pillar data
+        pillars = []
+        for pillar in lens_review['PillarReviewSummaries']:
+            pillar_risks, pillar_compliance = normalize_risk_counts(pillar['RiskCounts'])
+            pillars.append({
+                'id': pillar['PillarId'],
+                'name': pillar['PillarName'],
+                'riskCounts': pillar_risks,
+                'compliance': pillar_compliance
+            })
+        
+        # Prepare comprehensive response
+        response_data = {
+            'workloadId': workload['WorkloadId'],
+            'workloadName': workload['WorkloadName'],
+            'workloadArn': workload['WorkloadArn'],
+            'description': workload.get('Description', ''),
+            'environment': workload.get('Environment', ''),
+            'ownerName': workload.get('ReviewOwner', ''),
+            'accountIds': workload.get('AccountIds', [workload.get('Owner', '')]),
+            'regions': workload.get('AwsRegions', []),
+            'industry': workload.get('Industry', ''),
+            'updatedAt': workload.get('UpdatedAt', ''),
+            'riskCounts': {
+                'high': normalized_risks['HIGH'],
+                'medium': normalized_risks['MEDIUM'],
+                'compliant': normalized_risks['NONE'],
+                'unanswered': normalized_risks['UNANSWERED'],
+                'notApplicable': normalized_risks['NOT_APPLICABLE']
+            },
+            'overallCompliance': compliance_percentage,
+            'pillars': pillars,
+            'lensVersion': lens_review.get('LensVersion', ''),
+            'lensStatus': lens_review.get('LensStatus', ''),
+            'hasUnansweredQuestions': normalized_risks['UNANSWERED'] > 0
+        }
+        
+        logger.info(f"Successfully processed workload data for {workload_id}")
+        
+        return {
+            'statusCode': 200,
+            'headers': headers,
+            'body': json.dumps(response_data, default=str)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in get_workload_data: {str(e)}")
+        logger.error(traceback.format_exc())
+        return {
+            'statusCode': 500,
+            'headers': headers,
+            'body': json.dumps({'error': f'Error processing workload data: {str(e)}'})
+        }
 
 def lambda_handler(event, context):
     # Set CORS headers
@@ -59,6 +178,15 @@ def lambda_handler(event, context):
         logger.info(f"Using region: {region}")
         wa_client = boto3.client('wellarchitected', region_name=region)
         
+        # Log boto3 versions for debugging
+        logger.info(f"boto3 version: {boto3.__version__}")
+        logger.info(f"botocore version: {botocore.__version__}")
+        
+        # Get AWS identity for debugging
+        sts_client = boto3.client('sts', region_name=region)
+        identity = sts_client.get_caller_identity()
+        logger.info(f"AWS Identity: {json.dumps(identity)}")
+        
         # Handle custom operations
         if operation == 'get_workload_data':
             logger.info("Handling custom operation: get_workload_data")
@@ -70,11 +198,19 @@ def lambda_handler(event, context):
             'get_workload': 'get_workload',
             'list_lens_reviews': 'list_lens_reviews',
             'get_lens_review': 'get_lens_review',
-            'list_answers': 'list_answers'
+            'list_answers': 'list_answers',
+            'get_answer': 'get_answer'
         }
         
         # Get the actual SDK method name
         sdk_operation = operation_mapping.get(operation, operation)
+        
+        if not sdk_operation:
+            return {
+                'statusCode': 400,
+                'headers': headers,
+                'body': json.dumps({'error': f'Unknown operation: {operation}'})
+            }
         
         # Special handling for get_workload which needs WorkloadId
         if sdk_operation == 'get_workload' and 'WorkloadId' in params:
@@ -88,161 +224,32 @@ def lambda_handler(event, context):
         
         # Execute the requested operation
         logger.info(f"Executing operation: {sdk_operation} with params: {json.dumps(params)}")
-        response = getattr(wa_client, sdk_operation)(**params)
         
-        logger.info(f"Operation {sdk_operation} completed successfully")
-        
-        # Return successful response
-        return {
-            'statusCode': 200,
-            'headers': headers,
-            'body': json.dumps(response, default=str)
-        }
-    except Exception as e:
-        logger.error(f"Error executing operation: {str(e)}")
-        logger.error(traceback.format_exc())
-        # Return error response
-        return {
-            'statusCode': 500,
-            'headers': headers,
-            'body': json.dumps({
-                'error': str(e)
-            })
-        }
-
-def get_workload_data(wa_client, params, headers):
-    """
-    Custom handler to get all workload data including real compliance scores
-    """
-    try:
-        workload_id = params.get('workloadId')
-        lens_alias = params.get('lensAlias', 'wellarchitected')
-        
-        if not workload_id:
+        try:
+            response = getattr(wa_client, sdk_operation)(**params)
+            logger.info(f"Operation {sdk_operation} completed successfully")
+            logger.info(f"Response: {json.dumps(response, default=str)}")
+            
             return {
-                'statusCode': 400,
+                'statusCode': 200,
                 'headers': headers,
-                'body': json.dumps({'error': 'Missing workloadId parameter'})
+                'body': json.dumps(response, default=str)
             }
-        
-        # Extract workload ID from ARN if needed
-        if workload_id.startswith('arn:aws:wellarchitected:'):
-            workload_id = workload_id.split('/')[-1]
-        
-        logger.info(f"Getting workload data for workload ID: {workload_id}, lens: {lens_alias}")
-        
-        # Get workload details
-        workload = wa_client.get_workload(WorkloadId=workload_id)
-        
-        # Get lens review data
-        lens_review = wa_client.get_lens_review(
-            WorkloadId=workload_id,
-            LensAlias=lens_alias
-        )
-        
-        # Process pillar data and calculate compliance percentages
-        pillars = []
-        for pillar in lens_review['LensReview']['PillarReviewSummaries']:
-            # Calculate total questions
-            total = (
-                pillar['RiskCounts'].get('HIGH', 0) + 
-                pillar['RiskCounts'].get('MEDIUM', 0) + 
-                pillar['RiskCounts'].get('LOW', 0) + 
-                pillar['RiskCounts'].get('NONE', 0)
-            )
             
-            # Calculate compliant questions (NONE and LOW risk are considered compliant)
-            compliant = pillar['RiskCounts'].get('NONE', 0) + pillar['RiskCounts'].get('LOW', 0)
+        except Exception as api_error:
+            logger.error(f"Error executing operation: {str(api_error)}")
+            logger.error(traceback.format_exc())
+            return {
+                'statusCode': 500,
+                'headers': headers,
+                'body': json.dumps({'error': f'API operation failed: {str(api_error)}'})
+            }
             
-            # Calculate compliance percentage
-            compliance_percentage = round((compliant / total) * 100) if total > 0 else 0
-            
-            pillars.append({
-                'pillarId': pillar['PillarId'],
-                'pillarName': pillar['PillarName'],
-                'compliancePercentage': compliance_percentage,
-                'riskCounts': {
-                    'high': pillar['RiskCounts'].get('HIGH', 0),
-                    'medium': pillar['RiskCounts'].get('MEDIUM', 0),
-                    'low': pillar['RiskCounts'].get('LOW', 0),
-                    'none': pillar['RiskCounts'].get('NONE', 0)
-                }
-            })
-        
-        # Calculate overall compliance percentage
-        total_risk_counts = {
-            'high': 0,
-            'medium': 0,
-            'low': 0,
-            'none': 0
-        }
-        
-        for pillar in pillars:
-            total_risk_counts['high'] += pillar['riskCounts']['high']
-            total_risk_counts['medium'] += pillar['riskCounts']['medium']
-            total_risk_counts['low'] += pillar['riskCounts']['low']
-            total_risk_counts['none'] += pillar['riskCounts']['none']
-        
-        total_questions = (
-            total_risk_counts['high'] + 
-            total_risk_counts['medium'] + 
-            total_risk_counts['low'] + 
-            total_risk_counts['none']
-        )
-        
-        total_compliant = total_risk_counts['none'] + total_risk_counts['low']
-        overall_compliance = round((total_compliant / total_questions) * 100) if total_questions > 0 else 0
-        
-        # Get high and medium risk items for recommendations
-        recommendations = []
-        for pillar in lens_review['LensReview']['PillarReviewSummaries']:
-            pillar_id = pillar['PillarId']
-            
-            # Get answers for this pillar
-            answers = wa_client.list_answers(
-                WorkloadId=workload_id,
-                LensAlias=lens_alias,
-                PillarId=pillar_id
-            )
-            
-            # Filter for high and medium risk items
-            for answer in answers.get('AnswerSummaries', []):
-                if answer['Risk'] in ['HIGH', 'MEDIUM']:
-                    # Get detailed answer info
-                    detail = wa_client.get_answer(
-                        WorkloadId=workload_id,
-                        LensAlias=lens_alias,
-                        QuestionId=answer['QuestionId']
-                    )
-                    
-                    recommendations.append({
-                        'title': answer['QuestionTitle'],
-                        'pillarName': pillar['PillarName'],
-                        'risk': answer['Risk'],
-                        'improvementPlan': detail['Answer'].get('ImprovementPlan', ''),
-                        'improvementPlanUrl': detail['Answer'].get('ImprovementPlanUrl', '')
-                    })
-        
-        # Return the formatted data
-        result = {
-            'workloadName': workload['Workload']['WorkloadName'],
-            'workloadDescription': workload['Workload'].get('Description', ''),
-            'overallCompliance': overall_compliance,
-            'pillars': pillars,
-            'riskCounts': total_risk_counts,
-            'recommendations': recommendations
-        }
-        
-        return {
-            'statusCode': 200,
-            'headers': headers,
-            'body': json.dumps(result, default=str)
-        }
     except Exception as e:
-        logger.error(f"Error in get_workload_data: {str(e)}")
+        logger.error(f"Error processing request: {str(e)}")
         logger.error(traceback.format_exc())
         return {
             'statusCode': 500,
             'headers': headers,
-            'body': json.dumps({'error': str(e)})
+            'body': json.dumps({'error': f'Internal server error: {str(e)}'})
         }

@@ -16,7 +16,13 @@ The Well-Architected Report Visualizer provides a simple way to visualize and sh
 
 ## Solution Architecture
 
-![Architecture Diagram](architecture-diagram.png)
+To create the architecture diagram for this solution:
+
+1. Use draw.io (https://app.diagrams.net/) to create a professional AWS architecture diagram
+2. Add the AWS icons from the AWS Architecture library
+3. Follow the detailed instructions in `architecture-diagram-instructions-detailed.txt`
+4. Export the diagram as PNG with transparent background
+5. Place the exported file in the project root as `architecture-diagram.png`
 
 The solution consists of the following components:
 
