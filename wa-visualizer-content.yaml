@@ -1,0 +1,172 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Content deployment stack for Well-Architected Report Visualizer'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: wellarchitectedsummary
+    Description: Name of the project for resource tagging
+  
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, test, prod]
+    Description: Deployment environment
+    
+  InfrastructureStackName:
+    Type: String
+    Description: Name of the infrastructure stack to reference
+    
+  LambdaStackName:
+    Type: String
+    Description: Name of the lambda stack to reference
+
+Resources:
+  # Custom resource to deploy HTML content
+  HtmlDeployment:
+    Type: Custom::S3FileUpload
+    Properties:
+      ServiceToken: !GetAtt ContentDeploymentFunction.Arn
+      SourceBucket: !ImportValue 
+        Fn::Sub: "${InfrastructureStackName}-DeploymentBucketName"
+      DestinationBucket: !ImportValue 
+        Fn::Sub: "${InfrastructureStackName}-WebsiteBucketName"
+      Files:
+        - Source: "wa-summary.html"
+          Destination: "index.html"
+          ContentType: "text/html"
+        - Source: "script.js"
+          Destination: "script.js"
+          ContentType: "application/javascript"
+        - Source: "styles.css"
+          Destination: "styles.css"
+          ContentType: "text/css"
+      ApiEndpoint: !ImportValue 
+        Fn::Sub: "${LambdaStackName}-ApiEndpoint"
+
+  # Lambda function to deploy content
+  ContentDeploymentFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt ContentDeploymentRole.Arn
+      Runtime: python3.9
+      Timeout: 300
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          import os
+          import re
+
+          s3 = boto3.client('s3')
+
+          def handler(event, context):
+              print(f"Received event: {json.dumps(event)}")
+              
+              response_data = {}
+              
+              try:
+                  if event['RequestType'] == 'Delete':
+                      print("Delete request - nothing to do")
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+                      return
+                  
+                  source_bucket = event['ResourceProperties']['SourceBucket']
+                  destination_bucket = event['ResourceProperties']['DestinationBucket']
+                  files = event['ResourceProperties']['Files']
+                  api_endpoint = event['ResourceProperties']['ApiEndpoint']
+                  
+                  print(f"Source bucket: {source_bucket}")
+                  print(f"Destination bucket: {destination_bucket}")
+                  print(f"Files to deploy: {files}")
+                  print(f"API Endpoint: {api_endpoint}")
+                  
+                  for file_info in files:
+                      source = file_info['Source']
+                      destination = file_info['Destination']
+                      content_type = file_info['ContentType']
+                      
+                      print(f"Processing file: {source} -> {destination}")
+                      
+                      # Download the file from source bucket
+                      try:
+                          response = s3.get_object(Bucket=source_bucket, Key=source)
+                          content = response['Body'].read().decode('utf-8')
+                          
+                          # Replace API_ENDPOINT placeholder with actual endpoint
+                          if destination.endswith('.js'):
+                              print("Updating API_ENDPOINT in JavaScript file")
+                              content = re.sub(
+                                  r'const API_ENDPOINT = .*?;',
+                                  f"const API_ENDPOINT = '{api_endpoint}';",
+                                  content
+                              )
+                          
+                          # Upload to destination bucket
+                          s3.put_object(
+                              Bucket=destination_bucket,
+                              Key=destination,
+                              Body=content.encode('utf-8'),
+                              ContentType=content_type
+                          )
+                          
+                          print(f"Successfully deployed {destination}")
+                          
+                      except Exception as e:
+                          print(f"Error processing file {source}: {str(e)}")
+                          # Continue with other files even if one fails
+                  
+                  response_data['Message'] = 'Content deployment completed successfully'
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+                  
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  response_data['Error'] = str(e)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, response_data)
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+        - Key: environment
+          Value: !Ref Environment
+
+  # IAM Role for content deployment Lambda
+  ContentDeploymentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:ListBucket'
+                Resource:
+                  - !Sub "arn:aws:s3:::${ImportValue:${InfrastructureStackName}-DeploymentBucketName}/*"
+                  - !Sub "arn:aws:s3:::${ImportValue:${InfrastructureStackName}-DeploymentBucketName}"
+                  - !Sub "arn:aws:s3:::${ImportValue:${InfrastructureStackName}-WebsiteBucketName}/*"
+                  - !Sub "arn:aws:s3:::${ImportValue:${InfrastructureStackName}-WebsiteBucketName}"
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+        - Key: environment
+          Value: !Ref Environment
+
+Outputs:
+  WebsiteUrl:
+    Description: URL of the deployed website
+    Value: !ImportValue 
+      Fn::Sub: "${InfrastructureStackName}-WebsiteURL"

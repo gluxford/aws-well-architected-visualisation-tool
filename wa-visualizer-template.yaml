@@ -1,0 +1,468 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Well-Architected Report Visualizer - Deploys a web-based visualization tool for AWS Well-Architected Framework reports'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: wellarchitectedsummary
+    Description: Name of the project for resource tagging
+  
+  BucketNameSuffix:
+    Type: String
+    Description: Suffix to append to S3 bucket names to ensure global uniqueness (e.g., your account ID)
+    AllowedPattern: '^[a-z0-9-]*$'
+    ConstraintDescription: Must contain only lowercase letters, numbers, and hyphens
+    
+  Region:
+    Type: String
+    Default: us-east-1
+    Description: AWS Region to deploy the solution to
+    AllowedValues:
+      - us-east-1
+      - us-east-2
+      - us-west-1
+      - us-west-2
+      - eu-west-1
+      - eu-west-2
+      - eu-central-1
+      - ap-southeast-1
+      - ap-southeast-2
+      - ap-northeast-1
+      - ap-northeast-2
+      - sa-east-1
+
+Resources:
+  # S3 Bucket for hosting the web application
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "wa-report-visualizer-${BucketNameSuffix}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+
+  # Bucket policy to allow public read access
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebsiteBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub "arn:aws:s3:::${WebsiteBucket}/*"
+
+  # S3 Bucket for Lambda deployment packages
+  DeploymentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "wellarchitected-proxy-deployment-${BucketNameSuffix}"
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+
+  # IAM Role for Lambda function
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "wellarchitected-proxy-role-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+
+  # IAM Policy for Well-Architected read access
+  WellArchitectedReadOnlyPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: WellArchitectedReadOnly
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'wellarchitected:Get*'
+              - 'wellarchitected:List*'
+            Resource: '*'
+      Roles:
+        - !Ref LambdaExecutionRole
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+          
+  # Lambda function for the Well-Architected API proxy
+  WellArchitectedProxyFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: wellarchitected-proxy
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 30
+      MemorySize: 256
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          import logging
+
+          # Configure logging
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              logger.info(f"Received event: {json.dumps(event)}")
+              
+              # Get client IP for logging/security
+              source_ip = event.get('requestContext', {}).get('identity', {}).get('sourceIp', 'unknown')
+              logger.info(f"Request from IP: {source_ip}")
+              
+              # Parse the request body
+              try:
+                  body = json.loads(event.get('body', '{}'))
+                  operation = body.get('operation')
+                  params = body.get('params', {})
+                  
+                  logger.info(f"Received request for operation: {operation}")
+                  logger.info(f"Parameters: {params}")
+                  
+                  # Initialize boto3 client
+                  logger.info(f"boto3 version: {boto3.__version__}")
+                  logger.info(f"botocore version: {boto3.client('wellarchitected').__class__.__module__.split('.')[1]}")
+                  
+                  region = os.environ.get('AWS_REGION', 'us-east-1')
+                  logger.info(f"Using region: {region}")
+                  
+                  # Get AWS identity for debugging
+                  sts_client = boto3.client('sts')
+                  identity = sts_client.get_caller_identity()
+                  logger.info(f"AWS Identity: {identity}")
+                  
+                  # Create Well-Architected client
+                  wa_client = boto3.client('wellarchitected', region_name=region)
+                  
+                  # Execute the requested operation
+                  logger.info(f"Executing operation: {operation} with params: {params}")
+                  
+                  if not hasattr(wa_client, operation):
+                      return {
+                          'statusCode': 400,
+                          'headers': {
+                              'Access-Control-Allow-Origin': '*',
+                              'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+                              'Access-Control-Allow-Methods': 'OPTIONS,POST'
+                          },
+                          'body': json.dumps({'error': f"Operation {operation} not supported"})
+                      }
+                  
+                  # Call the Well-Architected API
+                  response = getattr(wa_client, operation)(**params)
+                  logger.info(f"Operation {operation} completed successfully")
+                  logger.info(f"Response: {response}")
+                  
+                  # Return the response with CORS headers
+                  return {
+                      'statusCode': 200,
+                      'headers': {
+                          'Access-Control-Allow-Origin': '*',
+                          'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+                          'Access-Control-Allow-Methods': 'OPTIONS,POST'
+                      },
+                      'body': json.dumps(response)
+                  }
+                  
+              except Exception as e:
+                  logger.error(f"Error: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'headers': {
+                          'Access-Control-Allow-Origin': '*',
+                          'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+                          'Access-Control-Allow-Methods': 'OPTIONS,POST'
+                      },
+                      'body': json.dumps({'error': str(e)})
+                  }
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+
+Resources:
+  # S3 Bucket for hosting the web application
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "wa-report-visualizer-${BucketNameSuffix}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+
+  # Bucket policy to allow public read access
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebsiteBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub "arn:aws:s3:::${WebsiteBucket}/*"
+
+  # S3 Bucket for Lambda deployment packages
+  DeploymentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "wellarchitected-proxy-deployment-${BucketNameSuffix}"
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+
+  # IAM Role for Lambda function
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "wellarchitected-proxy-role-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+
+  # IAM Policy for Well-Architected read access
+  WellArchitectedReadOnlyPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: WellArchitectedReadOnly
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'wellarchitected:Get*'
+              - 'wellarchitected:List*'
+            Resource: '*'
+      Roles:
+        - !Ref LambdaExecutionRole
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+          
+  # Lambda function for the Well-Architected API proxy
+  WellArchitectedProxyFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: wellarchitected-proxy
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 30
+      MemorySize: 256
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          import logging
+
+          # Configure logging
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              logger.info(f"Received event: {json.dumps(event)}")
+              
+              # Get client IP for logging/security
+              source_ip = event.get('requestContext', {}).get('identity', {}).get('sourceIp', 'unknown')
+              logger.info(f"Request from IP: {source_ip}")
+              
+              # Parse the request body
+              try:
+                  body = json.loads(event.get('body', '{}'))
+                  operation = body.get('operation')
+                  params = body.get('params', {})
+                  
+                  logger.info(f"Received request for operation: {operation}")
+                  logger.info(f"Parameters: {params}")
+                  
+                  # Initialize boto3 client
+                  logger.info(f"boto3 version: {boto3.__version__}")
+                  logger.info(f"botocore version: {boto3.client('wellarchitected').__class__.__module__.split('.')[1]}")
+                  
+                  region = os.environ.get('AWS_REGION', 'us-east-1')
+                  logger.info(f"Using region: {region}")
+                  
+                  # Get AWS identity for debugging
+                  sts_client = boto3.client('sts')
+                  identity = sts_client.get_caller_identity()
+                  logger.info(f"AWS Identity: {identity}")
+                  
+                  # Create Well-Architected client
+                  wa_client = boto3.client('wellarchitected', region_name=region)
+                  
+                  # Execute the requested operation
+                  logger.info(f"Executing operation: {operation} with params: {params}")
+                  
+                  if not hasattr(wa_client, operation):
+                      return {
+                          'statusCode': 400,
+                          'headers': {
+                              'Access-Control-Allow-Origin': '*',
+                              'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+                              'Access-Control-Allow-Methods': 'OPTIONS,POST'
+                          },
+                          'body': json.dumps({'error': f"Operation {operation} not supported"})
+                      }
+                  
+                  # Call the Well-Architected API
+                  response = getattr(wa_client, operation)(**params)
+                  logger.info(f"Operation {operation} completed successfully")
+                  logger.info(f"Response: {response}")
+                  
+                  # Return the response with CORS headers
+                  return {
+                      'statusCode': 200,
+                      'headers': {
+                          'Access-Control-Allow-Origin': '*',
+                          'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+                          'Access-Control-Allow-Methods': 'OPTIONS,POST'
+                      },
+                      'body': json.dumps(response)
+                  }
+                  
+              except Exception as e:
+                  logger.error(f"Error: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'headers': {
+                          'Access-Control-Allow-Origin': '*',
+                          'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+                          'Access-Control-Allow-Methods': 'OPTIONS,POST'
+                      },
+                      'body': json.dumps({'error': str(e)})
+                  }
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+          
+  # API Gateway REST API
+  WellArchitectedProxyApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: WellArchitectedProxyApi
+      Description: API Gateway for Well-Architected Proxy
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+
+  # API Gateway Resource
+  ProxyResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref WellArchitectedProxyApi
+      ParentId: !GetAtt WellArchitectedProxyApi.RootResourceId
+      PathPart: proxy
+
+  # API Gateway POST Method
+  ProxyPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref WellArchitectedProxyApi
+      ResourceId: !Ref ProxyResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WellArchitectedProxyFunction.Arn}/invocations
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: Empty
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: false
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            
+  # API Gateway OPTIONS Method (for CORS)
+  ProxyOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref WellArchitectedProxyApi
+      ResourceId: !Ref ProxyResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'OPTIONS,POST'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: "{}"
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: Empty
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+            
+  # API Gateway Deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ProxyPostMethod
+      - ProxyOptionsMethod
+    Properties:
+      RestApiId: !Ref WellArchitectedProxyApi
+      StageName: prod
+      
+  # Lambda Permission for API Gateway
+  LambdaApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WellArchitectedProxyFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WellArchitectedProxyApi}/*/POST/proxy

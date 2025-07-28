@@ -1,0 +1,258 @@
+################################################################################
+#
+# DevOps Conformance Pack
+#
+# This AWS Config Conformance Pack provides a set of rules and remediation actions
+# to help you implement DevOps best practices across your AWS environment.
+#
+################################################################################
+
+Resources:
+  # CI/CD Pipeline Security
+  CodeBuildProjectEncryption:
+    Properties:
+      ConfigRuleName: codebuild-project-artifact-encryption
+      Description: Checks if AWS CodeBuild project artifacts are encrypted. The rule is NON_COMPLIANT if the encryption is not enabled.
+      Source:
+        Owner: AWS
+        SourceIdentifier: CODEBUILD_PROJECT_ARTIFACT_ENCRYPTION
+    Type: AWS::Config::ConfigRule
+
+  CodeBuildProjectSourceRepoUrl:
+    Properties:
+      ConfigRuleName: codebuild-project-source-repo-url-check
+      Description: Checks if the GitHub or Bitbucket source repository URL contains personal access tokens or user credentials. The rule is NON_COMPLIANT if the source repository URL contains personal access tokens or user credentials.
+      Source:
+        Owner: AWS
+        SourceIdentifier: CODEBUILD_PROJECT_SOURCE_REPO_URL_CHECK
+    Type: AWS::Config::ConfigRule
+
+  # Infrastructure as Code Security
+  CloudFormationStackDriftDetection:
+    Properties:
+      ConfigRuleName: cloudformation-stack-drift-detection-check
+      Description: Checks if AWS CloudFormation stacks are drifted from their expected configurations. The rule is NON_COMPLIANT if the CloudFormation stack has drifted from its expected configuration.
+      Source:
+        Owner: AWS
+        SourceIdentifier: CLOUDFORMATION_STACK_DRIFT_DETECTION_CHECK
+    Type: AWS::Config::ConfigRule
+
+  # Container Security
+  ECRRepositoryScanOnPush:
+    Properties:
+      ConfigRuleName: ecr-private-image-scanning-enabled
+      Description: Checks if Amazon ECR private repositories have image scanning enabled. The rule is NON_COMPLIANT if image scanning is not enabled for the ECR repository.
+      Source:
+        Owner: AWS
+        SourceIdentifier: ECR_PRIVATE_IMAGE_SCANNING_ENABLED
+    Type: AWS::Config::ConfigRule
+
+  ECRRepositoryTagImmutability:
+    Properties:
+      ConfigRuleName: ecr-private-tag-immutability-enabled
+      Description: Checks if Amazon ECR private repositories have tag immutability enabled. The rule is NON_COMPLIANT if tag immutability is not enabled for the ECR repository.
+      Source:
+        Owner: AWS
+        SourceIdentifier: ECR_PRIVATE_TAG_IMMUTABILITY_ENABLED
+    Type: AWS::Config::ConfigRule
+
+  # Logging and Monitoring
+  CloudTrailEnabled:
+    Properties:
+      ConfigRuleName: cloudtrail-enabled
+      Description: Checks if AWS CloudTrail is enabled in your AWS account. The rule is NON_COMPLIANT if CloudTrail is not enabled.
+      Source:
+        Owner: AWS
+        SourceIdentifier: CLOUD_TRAIL_ENABLED
+    Type: AWS::Config::ConfigRule
+
+  CloudTrailCloudWatchLogsEnabled:
+    Properties:
+      ConfigRuleName: cloudtrail-cloudwatch-logs-enabled
+      Description: Checks if AWS CloudTrail trails are configured to send logs to Amazon CloudWatch Logs. The rule is NON_COMPLIANT if the CloudWatch Logs log group ARN is not found in the CloudTrail trail.
+      Source:
+        Owner: AWS
+        SourceIdentifier: CLOUD_TRAIL_CLOUD_WATCH_LOGS_ENABLED
+    Type: AWS::Config::ConfigRule
+
+  # Deployment Security
+  CodeDeployAutoRollbackMonitorEnabled:
+    Properties:
+      ConfigRuleName: codedeploy-auto-rollback-monitor-enabled
+      Description: Checks if the AWS CodeDeploy deployment group has auto-rollback monitoring enabled. The rule is NON_COMPLIANT if auto-rollback monitoring is not enabled.
+      Source:
+        Owner: AWS
+        SourceIdentifier: CODEDEPLOY_AUTO_ROLLBACK_MONITOR_ENABLED
+    Type: AWS::Config::ConfigRule
+
+  # Lambda Function Security
+  LambdaConcurrencyCheck:
+    Properties:
+      ConfigRuleName: lambda-concurrency-check
+      Description: Checks if Lambda functions are configured with function-level concurrent execution limits. The rule is NON_COMPLIANT if the Lambda function is not configured with function-level concurrent execution limit.
+      Source:
+        Owner: AWS
+        SourceIdentifier: LAMBDA_CONCURRENCY_CHECK
+    Type: AWS::Config::ConfigRule
+
+  LambdaDLQCheck:
+    Properties:
+      ConfigRuleName: lambda-dlq-check
+      Description: Checks if Lambda functions are configured with a dead-letter queue. The rule is NON_COMPLIANT if the Lambda function is not configured with a dead-letter queue.
+      Source:
+        Owner: AWS
+        SourceIdentifier: LAMBDA_DLQ_CHECK
+    Type: AWS::Config::ConfigRule
+
+  # IAM Security
+  IAMUserMFAEnabled:
+    Properties:
+      ConfigRuleName: iam-user-mfa-enabled
+      Description: Checks if AWS Identity and Access Management (IAM) users have multi-factor authentication (MFA) enabled. The rule is NON_COMPLIANT if any IAM user does not have MFA enabled.
+      Source:
+        Owner: AWS
+        SourceIdentifier: IAM_USER_MFA_ENABLED
+    Type: AWS::Config::ConfigRule
+
+  IAMPolicyNoStatementsWithAdminAccess:
+    Properties:
+      ConfigRuleName: iam-policy-no-statements-with-admin-access
+      Description: Checks if AWS Identity and Access Management (IAM) policies grant 'Admin' permissions. The rule is NON_COMPLIANT if any policy statement includes 'Effect': 'Allow' with 'Action': '*' over 'Resource': '*'.
+      Source:
+        Owner: AWS
+        SourceIdentifier: IAM_POLICY_NO_STATEMENTS_WITH_ADMIN_ACCESS
+    Type: AWS::Config::ConfigRule
+
+  # Secrets Management
+  SecretsManagerRotationEnabled:
+    Properties:
+      ConfigRuleName: secretsmanager-rotation-enabled-check
+      Description: Checks if AWS Secrets Manager secrets have rotation enabled. The rule is NON_COMPLIANT if a secret does not have rotation enabled.
+      Source:
+        Owner: AWS
+        SourceIdentifier: SECRETSMANAGER_ROTATION_ENABLED_CHECK
+    Type: AWS::Config::ConfigRule
+
+  SecretsManagerScheduledRotation:
+    Properties:
+      ConfigRuleName: secretsmanager-scheduled-rotation-success-check
+      Description: Checks if AWS Secrets Manager secrets have been rotated successfully according to the rotation schedule. The rule is NON_COMPLIANT if a secret has not been rotated successfully.
+      Source:
+        Owner: AWS
+        SourceIdentifier: SECRETSMANAGER_SCHEDULED_ROTATION_SUCCESS_CHECK
+    Type: AWS::Config::ConfigRule
+
+  # Resource Tagging
+  RequiredTagsCheck:
+    Properties:
+      ConfigRuleName: required-tags
+      Description: Checks if resources have the required tags. The rule is NON_COMPLIANT if resources don't have the required tags with the specified values.
+      InputParameters:
+        tag1Key: Environment
+        tag2Key: Team
+        tag3Key: Application
+      Source:
+        Owner: AWS
+        SourceIdentifier: REQUIRED_TAGS
+    Type: AWS::Config::ConfigRule
+
+  # S3 Security for Artifacts
+  S3BucketServerSideEncryptionEnabled:
+    Properties:
+      ConfigRuleName: s3-bucket-server-side-encryption-enabled
+      Description: Checks if S3 buckets have server-side encryption enabled. The rule is NON_COMPLIANT if server-side encryption is not enabled.
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED
+    Type: AWS::Config::ConfigRule
+
+  S3BucketPublicReadProhibited:
+    Properties:
+      ConfigRuleName: s3-bucket-public-read-prohibited
+      Description: Checks if S3 buckets allow public read access. The rule is NON_COMPLIANT if an S3 bucket is not configured with Block Public Access.
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_PUBLIC_READ_PROHIBITED
+    Type: AWS::Config::ConfigRule
+
+  S3BucketPublicWriteProhibited:
+    Properties:
+      ConfigRuleName: s3-bucket-public-write-prohibited
+      Description: Checks if S3 buckets allow public write access. The rule is NON_COMPLIANT if an S3 bucket is not configured with Block Public Access.
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_PUBLIC_WRITE_PROHIBITED
+    Type: AWS::Config::ConfigRule
+
+  # Network Security
+  VPCFlowLogsEnabled:
+    Properties:
+      ConfigRuleName: vpc-flow-logs-enabled
+      Description: Checks if Amazon Virtual Private Cloud (VPC) Flow Logs are enabled for VPCs. The rule is NON_COMPLIANT if Flow Logs are not enabled for a VPC.
+      Source:
+        Owner: AWS
+        SourceIdentifier: VPC_FLOW_LOGS_ENABLED
+    Type: AWS::Config::ConfigRule
+
+  # Remediation Actions
+  RemediateS3BucketEncryption:
+    DependsOn: S3BucketServerSideEncryptionEnabled
+    Properties:
+      AutomationAssumeRole: ${RemediationRoleArn}
+      ConfigRuleName: s3-bucket-server-side-encryption-enabled
+      MaximumAutomaticAttempts: 5
+      Parameters:
+        BucketName:
+          ResourceValue:
+            Value: RESOURCE_ID
+        SSEAlgorithm:
+          StaticValue:
+            Values:
+              - AES256
+      RetryAttemptSeconds: 60
+      TargetId: AWS-EnableS3BucketEncryption
+      TargetType: SSM_DOCUMENT
+    Type: AWS::Config::RemediationConfiguration
+
+  RemediateCloudTrailEnabled:
+    DependsOn: CloudTrailEnabled
+    Properties:
+      AutomationAssumeRole: ${RemediationRoleArn}
+      ConfigRuleName: cloudtrail-enabled
+      MaximumAutomaticAttempts: 5
+      Parameters:
+        TrailName:
+          StaticValue:
+            Values:
+              - DevOpsTrail
+        S3BucketName:
+          StaticValue:
+            Values:
+              - devops-cloudtrail-logs-${AWS::AccountId}
+        CloudWatchLogsLogGroupArn:
+          StaticValue:
+            Values:
+              - arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:CloudTrail/DevOpsTrail:*
+      RetryAttemptSeconds: 60
+      TargetId: AWS-ConfigureCloudTrail
+      TargetType: SSM_DOCUMENT
+    Type: AWS::Config::RemediationConfiguration
+
+  RemediateECRScanOnPush:
+    DependsOn: ECRRepositoryScanOnPush
+    Properties:
+      AutomationAssumeRole: ${RemediationRoleArn}
+      ConfigRuleName: ecr-private-image-scanning-enabled
+      MaximumAutomaticAttempts: 5
+      Parameters:
+        RepositoryName:
+          ResourceValue:
+            Value: RESOURCE_ID
+        ScanOnPush:
+          StaticValue:
+            Values:
+              - "true"
+      RetryAttemptSeconds: 60
+      TargetId: AWS-ConfigureECRImageScanningOnPush
+      TargetType: SSM_DOCUMENT
+    Type: AWS::Config::RemediationConfiguration

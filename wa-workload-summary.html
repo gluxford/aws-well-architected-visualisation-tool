@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Well-Architected Workload Summary</title>
+    <style>
+        body {
+            font-family: 'Amazon Ember', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background-color: #232f3e;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        h1, h2, h3 {
+            margin-top: 0;
+        }
+        .overview {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .overview-card {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            width: 48%;
+        }
+        .pillar-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .pillar-card {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            width: calc(33% - 20px);
+        }
+        .risk-high {
+            color: #d13212;
+        }
+        .risk-medium {
+            color: #ff9900;
+        }
+        .risk-low {
+            color: #1d8102;
+        }
+        .progress-container {
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            height: 20px;
+            margin-top: 10px;
+        }
+        .progress-bar {
+            height: 20px;
+            border-radius: 5px;
+            background-color: #ff9900;
+        }
+        .recommendations {
+            margin-top: 30px;
+        }
+        .recommendation-item {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .chart-container {
+            display: flex;
+            justify-content: space-between;
+            margin: 30px 0;
+        }
+        .chart {
+            width: 48%;
+            height: 300px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            padding: 15px;
+        }
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .btn {
+            background-color: #ff9900;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .btn:hover {
+            background-color: #e88b00;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .overview {
+                flex-direction: column;
+            }
+            .overview-card {
+                width: 100%;
+                margin-bottom: 15px;
+            }
+            .pillar-card {
+                width: 100%;
+            }
+            .chart-container {
+                flex-direction: column;
+            }
+            .chart {
+                width: 100%;
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+    <!-- Include Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <h1>AWS Well-Architected Workload Summary</h1>
+        <p>Workload: <span id="workload-name">test</span></p>
+        <p>Report Date: <span id="report-date">March 31, 2025</span></p>
+    </header>
+
+    <div class="overview">
+        <div class="overview-card">
+            <h2>Workload Overview</h2>
+            <p><strong>Description:</strong> a well-architected lens review</p>
+            <p><strong>Workload ID:</strong> 51fffe6df6dd0a8da31fd79726a49c57</p>
+            <p><strong>Environment:</strong> PRODUCTION</p>
+            <p><strong>Region:</strong> ap-southeast-2</p>
+            <p><strong>Review Owner:</strong> greg.luxford@cevo.com.au</p>
+            <p><strong>Last Updated:</strong> August 21, 2024</p>
+        </div>
+        <div class="overview-card">
+            <h2>Risk Summary</h2>
+            <p><strong>High Risk Items:</strong> <span id="high-risk" class="risk-high">49</span></p>
+            <p><strong>Medium Risk Items:</strong> <span id="medium-risk" class="risk-medium">8</span></p>
+            <p><strong>Low Risk Items:</strong> <span id="low-risk" class="risk-low">0</span></p>
+            <p><strong>Overall Compliance:</strong> <span id="compliance">0%</span></p>
+            <div class="progress-container">
+                <div class="progress-bar" id="compliance-bar" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <h2>Pillar Performance</h2>
+    <div class="pillar-summary">
+        <div class="pillar-card">
+            <h3>Operational Excellence</h3>
+            <p><strong>High Risk Items:</strong> <span class="risk-high">10</span></p>
+            <p><strong>Medium Risk Items:</strong> <span class="risk-medium">1</span></p>
+            <div class="progress-container">
+                <div class="progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="pillar-card">
+            <h3>Security</h3>
+            <p><strong>High Risk Items:</strong> <span class="risk-high">11</span></p>
+            <p><strong>Medium Risk Items:</strong> <span class="risk-medium">0</span></p>
+            <div class="progress-container">
+                <div class="progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="pillar-card">
+            <h3>Reliability</h3>
+            <p><strong>High Risk Items:</strong> <span class="risk-high">13</span></p>
+            <p><strong>Medium Risk Items:</strong> <span class="risk-medium">0</span></p>
+            <div class="progress-container">
+                <div class="progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="pillar-card">
+            <h3>Performance Efficiency</h3>
+            <p><strong>High Risk Items:</strong> <span class="risk-high">5</span></p>
+            <p><strong>Medium Risk Items:</strong> <span class="risk-medium">0</span></p>
+            <div class="progress-container">
+                <div class="progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="pillar-card">
+            <h3>Cost Optimization</h3>
+            <p><strong>High Risk Items:</strong> <span class="risk-high">10</span></p>
+            <p><strong>Medium Risk Items:</strong> <span class="risk-medium">1</span></p>
+            <div class="progress-container">
+                <div class="progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="pillar-card">
+            <h3>Sustainability</h3>
+            <p><strong>High Risk Items:</strong> <span class="risk-high">0</span></p>
+            <p><strong>Medium Risk Items:</strong> <span class="risk-medium">6</span></p>
+            <div class="progress-container">
+                <div class="progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <div class="chart">
+            <h3>Pillar Risk Distribution</h3>
+            <canvas id="pillarChart"></canvas>
+            <button class="btn" onclick="downloadPillarChart()">Export as PNG</button>
+        </div>
+        <div class="chart">
+            <h3>Overall Risk Profile</h3>
+            <canvas id="riskChart"></canvas>
+            <button class="btn" onclick="downloadRiskChart()">Export as PNG</button>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <div class="chart">
+            <h3>Pillar Comparison</h3>
+            <canvas id="radarChart"></canvas>
+            <button class="btn" onclick="downloadRadarChart()">Export as PNG</button>
+        </div>
+        <div class="chart">
+            <h3>Risk Distribution by Category</h3>
+            <canvas id="categoryChart"></canvas>
+            <button class="btn" onclick="downloadCategoryChart()">Export as PNG</button>
+        </div>
+    </div>
+
+    <div class="recommendations">
+        <h2>Top Improvement Recommendations</h2>
+        <div class="recommendation-item">
+            <h3>Address Reliability High Risk Items</h3>
+            <p><strong>Pillar:</strong> Reliability</p>
+            <p><strong>Risk Level:</strong> <span class="risk-high">High</span></p>
+            <p>Focus on the 13 high-risk items in the Reliability pillar to improve system resilience and ensure your workload performs its intended function correctly and consistently.</p>
+        </div>
+        <div class="recommendation-item">
+            <h3>Improve Security Posture</h3>
+            <p><strong>Pillar:</strong> Security</p>
+            <p><strong>Risk Level:</strong> <span class="risk-high">High</span></p>
+            <p>Address the 11 high-risk security items to enhance protection of information and systems, including confidentiality and integrity of data.</p>
+        </div>
+        <div class="recommendation-item">
+            <h3>Enhance Operational Excellence</h3>
+            <p><strong>Pillar:</strong> Operational Excellence</p>
+            <p><strong>Risk Level:</strong> <span class="risk-high">High</span></p>
+            <p>Resolve the 10 high-risk items in Operational Excellence to improve running and monitoring systems, and continually improve processes and procedures.</p>
+        </div>
+        <div class="recommendation-item">
+            <h3>Optimize Cost Management</h3>
+            <p><strong>Pillar:</strong> Cost Optimization</p>
+            <p><strong>Risk Level:</strong> <span class="risk-high">High</span></p>
+            <p>Address the 10 high-risk items in Cost Optimization to avoid unnecessary costs and run systems to deliver business value at the lowest price point.</p>
+        </div>
+        <div class="recommendation-item">
+            <h3>Improve Sustainability Practices</h3>
+            <p><strong>Pillar:</strong> Sustainability</p>
+            <p><strong>Risk Level:</strong> <span class="risk-medium">Medium</span></p>
+            <p>Address the 6 medium-risk items in the Sustainability pillar to minimize the environmental impacts of running cloud workloads.</p>
+        </div>
+    </div>
+
+    <div class="improvement-plan">
+        <h2>Detailed Improvement Plan</h2>
+        
+        <h3>Cost Optimization Improvements</h3>
+        <div class="accordion">
+            <div class="accordion-item">
+                <div class="accordion-header">Implement Cloud Financial Management</div>
+                <div class="accordion-content">
+                    <p><strong>Risk Level:</strong> <span class="risk-high">High</span></p>
+                    <p><strong>Question:</strong> How do you implement cloud financial management?</p>
+                    <p><strong>Recommended Actions:</strong></p>
+                    <ul>
+                        <li>Establish ownership of cost optimization</li>
+                        <li>Establish a partnership between finance and technology</li>
+                        <li>Establish cloud budgets and forecasts</li>
+                        <li>Implement cost awareness in your organizational processes</li>
+                        <li>Monitor cost proactively</li>
+                    </ul>
+                    <p><a href="https://wa.aws.amazon.com/wellarchitected/2024-06-27T08-00-00/TypeII/en/wellarchitected/wellarchitected.cloud-financial-management.improvement-plan.en.html" target="_blank">View detailed improvement plan</a></p>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <div class="accordion-header">Govern Usage</div>
+                <div class="accordion-content">
+                    <p><strong>Risk Level:</strong> <span class="risk-high">High</span></p>
+                    <p><strong>Question:</strong> How do you govern usage?</p>
+                    <p><strong>Recommended Actions:</strong></p>
+                    <ul>
+                        <li>Develop policies based on your organization requirements</li>
+                        <li>Implement goals and targets</li>
+                        <li>Implement an account structure</li>
+                        <li>Implement cost controls</li>
+                    </ul>
+                    <p><a href="https://wa.aws.amazon.com/wellarchitected/2024-06-27T08-00-00/TypeII/en/wellarchitected/wellarchitected.govern-usage.improvement-plan.en.html" target="_blank">View detailed improvement plan</a></p>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <div class="accordion-header">Monitor Cost and Usage</div>
+                <div class="accordion-content">
+                    <p><strong>Risk Level:</strong> <span class="risk-high">High</span></p>
+                    <p><strong>Question:</strong> How do you monitor your cost and usage?</p>
+                    <p><strong>Recommended Actions:</strong></p>
+                    <ul>
+                        <li>Configure detailed information sources</li>
+                        <li>Identify cost attribution categories</li>
+                        <li>Establish organization metrics</li>
+                        <li>Configure billing and cost management tools</li>
+                    </ul>
+                    <p><a href="https://wa.aws.amazon.com/wellarchitected/2024-06-27T08-00-00/TypeII/en/wellarchitected/wellarchitected.monitor-usage.improvement-plan.en.html" target="_blank">View detailed improvement plan</a></p>
+                </div>
+            </div>
+        </div>
+
+        <h3>Operational Excellence Improvements</h3>
+        <div class="accordion">
+            <div class="accordion-item">
+                <div class="accordion-header">Determine Priorities</div>
+                <div class="accordion-content">
+                    <p><strong>Risk Level:</strong> <span class="risk-high">High</span></p>
+                    <p><strong>Question:</strong> How do you determine what your priorities are?</p>
+                    <p><strong>Recommended Actions:</strong></p>
+                    <ul>
+                        <li>Evaluate customer needs</li>
+                        <li>Evaluate internal customer needs</li>
+                        <li>Evaluate governance requirements</li>
+                        <li>Evaluate compliance requirements</li>
+                        <li>Evaluate threat landscape</li>
+                    </ul>
+                    <p><a href="https://wa.aws.amazon.com/wellarchitected/2024-06-27T08-00-00/TypeII/en/wellarchitected/wellarchitected.priorities.improvement-plan.en.html" target="_blank">View detailed improvement plan</a></p>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <div class="accordion-header">Implement Workload Observability</div>
+                <div class="accordion-content">
+                    <p><strong>Risk Level:</strong> <span class="risk-high">High</span></p>
+                    <p><strong>Question:</strong> How do you implement observability in your workload?</p>
+                    <p><strong>Recommended Actions:</strong></p>
+                    <ul>
+                        <li>Identify key performance indicators</li>
+                        <li>Implement application telemetry</li>
+                        <li>Implement user experience telemetry</li>
+                        <li>Implement dependency telemetry</li>
+                        <li>Implement distributed tracing</li>
+                    </ul>
+                    <p><a href="https://wa.aws.amazon.com/wellarchitected/2024-06-27T08-00-00/TypeII/en/wellarchitected/wellarchitected.observability.improvement-plan.en.html" target="_blank">View detailed improvement plan</a></p>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <div class="accordion-header">Reduce Defects and Improve Flow</div>
+                <div class="accordion-content">
+                    <p><strong>Risk Level:</strong> <span class="risk-high">High</span></p>
+                    <p><strong>Question:</strong> How do you reduce defects, ease remediation, and improve flow into production?</p>
+                    <p><strong>Recommended Actions:</strong></p>
+                    <ul>
+                        <li>Use version control</li>
+                        <li>Test and validate changes</li>
+                        <li>Use configuration management systems</li>
+                        <li>Use build and deployment management systems</li>
+                        <li>Perform patch management</li>
+                    </ul>
+                    <p><a href="https://wa.aws.amazon.com/wellarchitected/2024-06-27T08-00-00/TypeII/en/wellarchitected/wellarchitected.dev-integ.improvement-plan.en.html" target="_blank">View detailed improvement plan</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .improvement-plan {
+            margin-top: 40px;
+        }
+        .accordion {
+            margin-bottom: 30px;
+        }
+        .accordion-item {
+            margin-bottom: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .accordion-header {
+            background-color: #f5f5f5;
+            padding: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            border-left: 5px solid #ff9900;
+        }
+        .accordion-header:hover {
+            background-color: #e9e9e9;
+        }
+        .accordion-content {
+            background-color: white;
+            padding: 0 15px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .accordion-content.active {
+            max-height: 500px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const accordionHeaders = document.querySelectorAll('.accordion-header');
+            
+            accordionHeaders.forEach(header => {
+                header.addEventListener('click', function() {
+                    const content = this.nextElementSibling;
+                    content.classList.toggle('active');
+                });
+            });
+        });
+    </script>
+
+    <footer>
+        <p>Generated on March 31, 2025 | AWS Well-Architected Framework</p>
+        <p>This report is for informational purposes only. For detailed analysis, please refer to the full Well-Architected review.</p>
+    </footer>
+
+    <script>
+        // Chart.js implementation for visualizations
+        document.addEventListener('DOMContentLoaded', function() {
+            // Pillar risk distribution chart
+            const pillarCtx = document.getElementById('pillarChart').getContext('2d');
+            window.pillarChart = new Chart(pillarCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Operational Excellence', 'Security', 'Reliability', 'Performance', 'Cost Optimization', 'Sustainability'],
+                    datasets: [
+                        {
+                            label: 'High Risk',
+                            data: [10, 11, 13, 5, 10, 0],
+                            backgroundColor: '#d13212',
+                            borderColor: '#b02e10',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Medium Risk',
+                            data: [1, 0, 0, 0, 1, 6],
+                            backgroundColor: '#ff9900',
+                            borderColor: '#e88b00',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            stacked: true,
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Overall risk profile chart
+            const riskCtx = document.getElementById('riskChart').getContext('2d');
+            window.riskChart = new Chart(riskCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['High Risk', 'Medium Risk', 'No Risk', 'Unanswered', 'Not Applicable'],
+                    datasets: [{
+                        data: [49, 8, 0, 0, 0],
+                        backgroundColor: [
+                            '#d13212',
+                            '#ff9900',
+                            '#1d8102',
+                            '#cccccc',
+                            '#e0e0e0'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Pillar comparison radar chart
+            const radarCtx = document.getElementById('radarChart').getContext('2d');
+            window.radarChart = new Chart(radarCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['Operational Excellence', 'Security', 'Reliability', 'Performance Efficiency', 'Cost Optimization', 'Sustainability'],
+                    datasets: [{
+                        label: 'Pillar Score (%)',
+                        data: [9, 0, 0, 0, 9, 100],  // Calculated based on risk items (lower is worse)
+                        backgroundColor: 'rgba(255, 153, 0, 0.2)',
+                        borderColor: 'rgba(255, 153, 0, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(255, 153, 0, 1)'
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                stepSize: 20
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Risk distribution by category chart
+            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+            window.categoryChart = new Chart(categoryCtx, {
+                type: 'polarArea',
+                data: {
+                    labels: ['Design', 'Implementation', 'Testing', 'Monitoring', 'Governance'],
+                    datasets: [{
+                        data: [15, 12, 8, 14, 8],  // Example distribution by category
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.7)',
+                            'rgba(54, 162, 235, 0.7)',
+                            'rgba(255, 206, 86, 0.7)',
+                            'rgba(75, 192, 192, 0.7)',
+                            'rgba(153, 102, 255, 0.7)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        });
+
+        // Function to download chart as PNG
+        function downloadChart(chart, filename) {
+            // Create a temporary link
+            const link = document.createElement('a');
+            link.download = filename;
+            
+            // Convert chart canvas to data URL
+            link.href = chart.toBase64Image();
+            
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Functions to download specific charts
+        function downloadPillarChart() {
+            downloadChart(window.pillarChart, 'pillar-risk-distribution.png');
+        }
+
+        function downloadRiskChart() {
+            downloadChart(window.riskChart, 'overall-risk-profile.png');
+        }
+
+        function downloadRadarChart() {
+            downloadChart(window.radarChart, 'pillar-comparison.png');
+        }
+
+        function downloadCategoryChart() {
+            downloadChart(window.categoryChart, 'risk-distribution-by-category.png');
+        }
+    </script>
+</body>
+</html>

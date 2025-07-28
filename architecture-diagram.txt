@@ -1,0 +1,41 @@
+```mermaid
+graph TD
+    User([User]) -->|Accesses| S3[S3 Website Bucket]
+    User -->|Views| Dashboard[Dashboard UI]
+    
+    Dashboard -->|Makes API Calls| APIG[API Gateway]
+    APIG -->|Invokes| Lambda[Lambda Proxy]
+    Lambda -->|Calls| WA[AWS Well-Architected API]
+    
+    Lambda -->|Returns Data with CORS Headers| Dashboard
+    
+    CF[CloudFront Distribution] -.->|Optional| S3
+    
+    subgraph AWS Cloud
+        S3
+        APIG
+        Lambda
+        WA
+        CF
+    end
+    
+    subgraph CloudFormation Stacks
+        Master[Master Stack] -->|Deploys| Infra[Infrastructure Stack]
+        Master -->|Deploys| LambdaStack[Lambda Stack]
+        Master -->|Deploys| Content[Content Stack]
+        
+        Infra -->|Creates| S3
+        Infra -->|Creates| CF
+        LambdaStack -->|Creates| APIG
+        LambdaStack -->|Creates| Lambda
+        Content -->|Deploys Files to| S3
+    end
+    
+    classDef aws fill:#FF9900,stroke:#232F3E,color:white;
+    classDef stack fill:#1E88E5,stroke:#0D47A1,color:white;
+    classDef user fill:#4CAF50,stroke:#2E7D32,color:white;
+    
+    class S3,APIG,Lambda,WA,CF aws;
+    class Master,Infra,LambdaStack,Content stack;
+    class User,Dashboard user;
+```

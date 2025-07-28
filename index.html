@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Well-Architected PDF Report Visualizer</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Well-Architected PDF Report Visualizer</h1>
+    </header>
+    
+    <main>
+        <section id="upload-section">
+            <h2>Upload Well-Architected Report (PDF)</h2>
+            <div class="upload-container">
+                <input type="file" id="report-upload" accept=".pdf">
+                <button id="upload-btn">Process Report</button>
+            </div>
+            <div id="loading" class="hidden">Processing PDF...</div>
+        </section>
+
+        <section id="summary-section" class="hidden">
+            <h2>Report Summary</h2>
+            <div class="summary-container">
+                <div class="workload-info">
+                    <h3>Workload Information</h3>
+                    <div id="workload-details"></div>
+                </div>
+                
+                <div class="overall-compliance">
+                    <h3>Overall Compliance</h3>
+                    <div class="chart-container">
+                        <canvas id="throttle-chart"></canvas>
+                        <button class="export-btn" data-chart="throttle-chart">Export as PNG</button>
+                    </div>
+                </div>
+                
+                <div class="pillar-overview">
+                    <h3>Pillar Overview</h3>
+                    <div class="chart-container">
+                        <canvas id="spider-chart"></canvas>
+                        <button class="export-btn" data-chart="spider-chart">Export as PNG</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="pillars-section" class="hidden">
+            <h2>Pillar Details</h2>
+            <div class="pillars-container" id="pillars-container"></div>
+        </section>
+
+        <section id="remediation-section" class="hidden">
+            <h2>Remediation Plans</h2>
+            <div class="remediation-container" id="remediation-container"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Well-Architected PDF Report Visualizer &copy; 2025</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

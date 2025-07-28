@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AWS Architecture Diagram Creator</title>
+    <script src="https://cdn.jsdelivr.net/npm/mxgraph@4.2.2/javascript/mxClient.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        #container {
+            width: 100%;
+            height: 600px;
+            background-color: white;
+            border: 1px solid #ddd;
+            overflow: auto;
+        }
+        h1 {
+            color: #232F3E;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #FF9900;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #EC7211;
+        }
+    </style>
+</head>
+<body>
+    <h1>Well-Architected Report Visualizer - Architecture Diagram</h1>
+    <div class="controls">
+        <button id="exportPng">Export as PNG</button>
+        <button id="exportSvg">Export as SVG</button>
+    </div>
+    <div id="container"></div>
+
+    <script>
+        // Function to initialize the diagram
+        function main() {
+            // Checks if the browser is supported
+            if (!mxClient.isBrowserSupported()) {
+                mxUtils.error('Browser is not supported!', 200, false);
+                return;
+            }
+
+            // Creates the div for the graph
+            var container = document.getElementById('container');
+            
+            // Disables the built-in context menu
+            mxEvent.disableContextMenu(container);
+            
+            // Creates the graph inside the given container
+            var graph = new mxGraph(container);
+            
+            // Enables rubberband selection
+            new mxRubberband(graph);
+            
+            // Gets the default parent for inserting new cells
+            var parent = graph.getDefaultParent();
+            
+            // Enables tooltips
+            graph.setTooltips(true);
+            
+            // Enables panning with the mouse wheel
+            graph.setPanning(true);
+            
+            // Enables HTML labels
+            graph.setHtmlLabels(true);
+            
+            // Adds cells to the model in a single step
+            graph.getModel().beginUpdate();
+            try {
+                // User
+                var user = graph.insertVertex(parent, null, 'User', 50, 200, 80, 60, 'shape=image;image=https://icons.terrastruct.com/aws%2FGeneral%20Resources%2FUser.svg;');
+                
+                // CloudFront
+                var cloudfront = graph.insertVertex(parent, null, 'CloudFront\n(Optional)', 200, 100, 100, 60, 'shape=image;image=https://icons.terrastruct.com/aws%2FNetworking%20&%20Content%20Delivery%2FAmazon-CloudFront.svg;');
+                
+                // S3 Bucket
+                var s3 = graph.insertVertex(parent, null, 'S3 Website\nBucket', 200, 200, 100, 60, 'shape=image;image=https://icons.terrastruct.com/aws%2FStorage%2FAmazon-Simple-Storage-Service-S3.svg;');
+                
+                // API Gateway
+                var apiGateway = graph.insertVertex(parent, null, 'API Gateway', 400, 200, 100, 60, 'shape=image;image=https://icons.terrastruct.com/aws%2FApplication%20Integration%2FAmazon-API-Gateway.svg;');
+                
+                // Lambda
+                var lambda = graph.insertVertex(parent, null, 'Lambda Proxy', 600, 200, 100, 60, 'shape=image;image=https://icons.terrastruct.com/aws%2FCompute%2FAWS-Lambda.svg;');
+                
+                // Well-Architected API
+                var waApi = graph.insertVertex(parent, null, 'Well-Architected\nAPI', 800, 200, 100, 60, 'shape=image;image=https://icons.terrastruct.com/aws%2FManagement%20&%20Governance%2FAWS-Well-Architected-Tool.svg;');
+                
+                // CloudFormation
+                var cfn = graph.insertVertex(parent, null, 'CloudFormation', 400, 400, 100, 60, 'shape=image;image=https://icons.terrastruct.com/aws%2FManagement%20&%20Governance%2FAWS-CloudFormation.svg;');
+                
+                // Master Stack
+                var masterStack = graph.insertVertex(parent, null, 'Master Stack', 200, 500, 100, 40, 'fillColor=#1E88E5;fontColor=white;');
+                
+                // Infrastructure Stack
+                var infraStack = graph.insertVertex(parent, null, 'Infrastructure\nStack', 350, 500, 100, 40, 'fillColor=#1E88E5;fontColor=white;');
+                
+                // Lambda Stack
+                var lambdaStack = graph.insertVertex(parent, null, 'Lambda\nStack', 500, 500, 100, 40, 'fillColor=#1E88E5;fontColor=white;');
+                
+                // Content Stack
+                var contentStack = graph.insertVertex(parent, null, 'Content\nStack', 650, 500, 100, 40, 'fillColor=#1E88E5;fontColor=white;');
+                
+                // Connections
+                var e1 = graph.insertEdge(parent, null, '1. Access', user, s3);
+                var e2 = graph.insertEdge(parent, null, '3. API Calls', s3, apiGateway);
+                var e3 = graph.insertEdge(parent, null, '4. Invoke', apiGateway, lambda);
+                var e4 = graph.insertEdge(parent, null, '5. Call', lambda, waApi);
+                
+                // Return path
+                var e5 = graph.insertEdge(parent, null, '6. Return Data', waApi, lambda, null, 'dashed=1;');
+                e5.geometry.points = [new mxPoint(800, 250)];
+                
+                var e6 = graph.insertEdge(parent, null, '7. Return with CORS', lambda, apiGateway, null, 'dashed=1;');
+                e6.geometry.points = [new mxPoint(600, 250)];
+                
+                var e7 = graph.insertEdge(parent, null, '8. Return JSON', apiGateway, s3, null, 'dashed=1;');
+                e7.geometry.points = [new mxPoint(400, 250)];
+                
+                // CloudFront connection (optional)
+                var e8 = graph.insertEdge(parent, null, 'Optional CDN', cloudfront, s3, null, 'dashed=1;');
+                
+                // CloudFormation connections
+                var e9 = graph.insertEdge(parent, null, 'Orchestrates', cfn, masterStack);
+                var e10 = graph.insertEdge(parent, null, 'Deploys', masterStack, infraStack);
+                var e11 = graph.insertEdge(parent, null, 'Deploys', masterStack, lambdaStack);
+                var e12 = graph.insertEdge(parent, null, 'Deploys', masterStack, contentStack);
+                
+                var e13 = graph.insertEdge(parent, null, 'Provisions', infraStack, s3);
+                var e14 = graph.insertEdge(parent, null, 'Provisions', infraStack, cloudfront, null, 'dashed=1;');
+                var e15 = graph.insertEdge(parent, null, 'Provisions', lambdaStack, apiGateway);
+                var e16 = graph.insertEdge(parent, null, 'Provisions', lambdaStack, lambda);
+                var e17 = graph.insertEdge(parent, null, 'Deploys Files', contentStack, s3);
+                
+            } finally {
+                // Updates the display
+                graph.getModel().endUpdate();
+            }
+            
+            // Fits the graph in the available space
+            graph.fit();
+            
+            // Export as PNG
+            document.getElementById('exportPng').addEventListener('click', function() {
+                var canvas = document.createElement('canvas');
+                var bounds = graph.getGraphBounds();
+                var scale = 1;
+                
+                canvas.width = Math.ceil(bounds.width * scale) + 1;
+                canvas.height = Math.ceil(bounds.height * scale) + 1;
+                
+                var imgExport = new mxImageExport();
+                var imgCanvas = new mxImageCanvas(canvas);
+                
+                imgExport.drawState(graph.getView().getState(graph.model.root), imgCanvas);
+                
+                var img = canvas.toDataURL('image/png');
+                var link = document.createElement('a');
+                link.download = 'architecture-diagram.png';
+                link.href = img;
+                link.click();
+            });
+            
+            // Export as SVG
+            document.getElementById('exportSvg').addEventListener('click', function() {
+                var bounds = graph.getGraphBounds();
+                var svg = graph.getSvg(null, bounds.width + 10, bounds.height + 10);
+                
+                var svgData = new XMLSerializer().serializeToString(svg);
+                var svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+                var svgUrl = URL.createObjectURL(svgBlob);
+                
+                var link = document.createElement('a');
+                link.download = 'architecture-diagram.svg';
+                link.href = svgUrl;
+                link.click();
+            });
+        }
+        
+        // Run the main function when the document is loaded
+        document.addEventListener('DOMContentLoaded', main);
+    </script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation StackSet to deploy DevOps Conformance Pack across multiple accounts and regions'
+
+Parameters:
+  AdministrationRoleName:
+    Type: String
+    Default: AWSCloudFormationStackSetAdministrationRole
+    Description: The name of the IAM role that allows CloudFormation to assume and perform stack set operations
+    
+  ExecutionRoleName:
+    Type: String
+    Default: AWSCloudFormationStackSetExecutionRole
+    Description: The name of the IAM role in target accounts that CloudFormation will assume to perform stack operations
+    
+  PermissionModel:
+    Type: String
+    Default: SELF_MANAGED
+    AllowedValues:
+      - SELF_MANAGED
+      - SERVICE_MANAGED
+    Description: The permission model for the StackSet (SELF_MANAGED or SERVICE_MANAGED)
+    
+  ManagedAccountIds:
+    Type: CommaDelimitedList
+    Description: List of AWS account IDs where the conformance pack should be deployed (for SELF_MANAGED)
+    
+  OrganizationalUnitIds:
+    Type: CommaDelimitedList
+    Description: List of AWS Organizations OU IDs where the conformance pack should be deployed (for SERVICE_MANAGED)
+    
+  DeploymentRegions:
+    Type: CommaDelimitedList
+    Description: List of AWS regions where the conformance pack should be deployed
+    
+  ConformancePackS3BucketName:
+    Type: String
+    Description: S3 bucket name where the conformance pack template is stored
+    
+  ConformancePackS3KeyPrefix:
+    Type: String
+    Default: conformance-packs/
+    Description: S3 key prefix where the conformance pack template is stored
+    
+  DeliveryS3BucketName:
+    Type: String
+    Description: S3 bucket name where AWS Config will deliver evaluation results
+    
+  DeliveryS3KeyPrefix:
+    Type: String
+    Default: config-delivery/
+    Description: S3 key prefix where AWS Config will deliver evaluation results
+
+Conditions:
+  IsSelfManaged: !Equals [!Ref PermissionModel, 'SELF_MANAGED']
+  IsServiceManaged: !Equals [!Ref PermissionModel, 'SERVICE_MANAGED']
+
+Resources:
+  DevOpsConformancePackStackSet:
+    Type: AWS::CloudFormation::StackSet
+    Properties:
+      StackSetName: DevOpsConformancePackStackSet
+      Description: StackSet to deploy DevOps Conformance Pack across multiple accounts and regions
+      PermissionModel: !Ref PermissionModel
+      AdministrationRoleARN: !If 
+        - IsSelfManaged
+        - !Sub arn:aws:iam::${AWS::AccountId}:role/${AdministrationRoleName}
+        - !Ref AWS::NoValue
+      ExecutionRoleName: !If 
+        - IsSelfManaged
+        - !Ref ExecutionRoleName
+        - !Ref AWS::NoValue
+      ManagedExecution: 
+        Active: true
+      StackInstancesGroup:
+        - DeploymentTargets:
+            !If
+            - IsSelfManaged
+            - Accounts: !Ref ManagedAccountIds
+            - OrganizationalUnitIds: !Ref OrganizationalUnitIds
+          Regions: !Ref DeploymentRegions
+      TemplateBody: |
+        AWSTemplateFormatVersion: '2010-09-09'
+        Description: 'Template to deploy DevOps Conformance Pack in target accounts'
+        
+        Parameters:
+          ConformancePackS3BucketName:
+            Type: String
+          ConformancePackS3KeyPrefix:
+            Type: String
+          DeliveryS3BucketName:
+            Type: String
+          DeliveryS3KeyPrefix:
+            Type: String
+        
+        Resources:
+          # IAM Role for Config Remediation
+          ConfigRemediationRole:
+            Type: AWS::IAM::Role
+            Properties:
+              RoleName: ConfigRemediationRole
+              AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                  - Effect: Allow
+                    Principal:
+                      Service: ssm.amazonaws.com
+                    Action: sts:AssumeRole
+              ManagedPolicyArns:
+                - arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole
+              Policies:
+                - PolicyName: ConfigRemediationPolicy
+                  PolicyDocument:
+                    Version: '2012-10-17'
+                    Statement:
+                      - Effect: Allow
+                        Action:
+                          - s3:PutEncryptionConfiguration
+                          - s3:PutBucketPolicy
+                          - cloudtrail:CreateTrail
+                          - cloudtrail:StartLogging
+                          - cloudtrail:UpdateTrail
+                          - ecr:PutImageScanningConfiguration
+                          - logs:CreateLogGroup
+                          - logs:CreateLogStream
+                          - logs:PutLogEvents
+                        Resource: '*'
+        
+          # AWS Config Conformance Pack
+          DevOpsConformancePack:
+            Type: AWS::Config::ConformancePack
+            Properties:
+              ConformancePackName: DevOpsConformancePack
+              DeliveryS3Bucket: !Ref DeliveryS3BucketName
+              DeliveryS3KeyPrefix: !Ref DeliveryS3KeyPrefix
+              TemplateS3Uri: !Sub s3://${ConformancePackS3BucketName}/${ConformancePackS3KeyPrefix}devops-conformance-pack.yaml
+              ConformancePackInputParameters:
+                - ParameterName: RemediationRoleArn
+                  ParameterValue: !GetAtt ConfigRemediationRole.Arn
+        
+        Outputs:
+          ConformancePackId:
+            Description: ID of the deployed Conformance Pack
+            Value: !Ref DevOpsConformancePack
+            
+          RemediationRoleArn:
+            Description: ARN of the IAM role used for remediation actions
+            Value: !GetAtt ConfigRemediationRole.Arn
+      Parameters:
+        - ParameterKey: ConformancePackS3BucketName
+          ParameterValue: !Ref ConformancePackS3BucketName
+        - ParameterKey: ConformancePackS3KeyPrefix
+          ParameterValue: !Ref ConformancePackS3KeyPrefix
+        - ParameterKey: DeliveryS3BucketName
+          ParameterValue: !Ref DeliveryS3BucketName
+        - ParameterKey: DeliveryS3KeyPrefix
+          ParameterValue: !Ref DeliveryS3KeyPrefix
+      Capabilities:
+        - CAPABILITY_NAMED_IAM
+
+Outputs:
+  StackSetId:
+    Description: ID of the created StackSet
+    Value: !Ref DevOpsConformancePackStackSet
+    
+  StackSetARN:
+    Description: ARN of the created StackSet
+    Value: !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stackset/DevOpsConformancePackStackSet

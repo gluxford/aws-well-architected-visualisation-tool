@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Master stack for Well-Architected Report Visualizer'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: wellarchitectedsummary
+    Description: Name of the project for resource tagging
+  
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, test, prod]
+    Description: Deployment environment
+    
+  WebsiteBucketName:
+    Type: String
+    Description: Name for the S3 bucket hosting the web application (must be globally unique)
+    
+  DeploymentBucketName:
+    Type: String
+    Description: Name for the S3 bucket storing deployment artifacts (must be globally unique)
+    
+  CreateCloudFrontDistribution:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Whether to create a CloudFront distribution for the website
+    
+  LambdaFunctionName:
+    Type: String
+    Default: wellarchitected-proxy
+    Description: Name of the Lambda function
+    
+  ApiGatewayName:
+    Type: String
+    Default: WellArchitectedProxyApi
+    Description: Name of the API Gateway
+    
+  ApiStageName:
+    Type: String
+    Default: prod
+    Description: Name of the API Gateway stage
+
+Resources:
+  # Infrastructure Stack (S3 buckets, CloudFront)
+  InfrastructureStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://${DeploymentBucketName}.s3.amazonaws.com/templates/wa-visualizer-infra.yaml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+        WebsiteBucketName: !Ref WebsiteBucketName
+        DeploymentBucketName: !Ref DeploymentBucketName
+        CreateCloudFrontDistribution: !Ref CreateCloudFrontDistribution
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+        - Key: environment
+          Value: !Ref Environment
+
+  # Lambda and API Gateway Stack
+  LambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://${DeploymentBucketName}.s3.amazonaws.com/templates/wa-visualizer-lambda.yaml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+        InfrastructureStackName: !GetAtt InfrastructureStack.Outputs.StackName
+        LambdaFunctionName: !Ref LambdaFunctionName
+        ApiGatewayName: !Ref ApiGatewayName
+        ApiStageName: !Ref ApiStageName
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+        - Key: environment
+          Value: !Ref Environment
+
+  # Content Deployment Stack
+  ContentStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - InfrastructureStack
+      - LambdaStack
+    Properties:
+      TemplateURL: !Sub "https://${DeploymentBucketName}.s3.amazonaws.com/templates/wa-visualizer-content.yaml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+        InfrastructureStackName: !GetAtt InfrastructureStack.Outputs.StackName
+        LambdaStackName: !GetAtt LambdaStack.Outputs.StackName
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+        - Key: environment
+          Value: !Ref Environment
+
+Outputs:
+  WebsiteUrl:
+    Description: URL of the deployed website
+    Value: !GetAtt ContentStack.Outputs.WebsiteUrl
+    
+  ApiEndpoint:
+    Description: URL of the API Gateway endpoint
+    Value: !GetAtt LambdaStack.Outputs.ApiEndpoint
+    
+  CloudFrontDomainName:
+    Condition: CreateCloudFront
+    Description: Domain name of the CloudFront distribution
+    Value: !GetAtt InfrastructureStack.Outputs.CloudFrontDomainName
+
+Conditions:
+  CreateCloudFront: !Equals [!Ref CreateCloudFrontDistribution, 'true']
