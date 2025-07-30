@@ -5,24 +5,32 @@ import logging
 import ipaddress
 import traceback
 import botocore
+from typing import Dict, Any, Optional, List, Union
+from datetime import datetime
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # Allowed IP address - make this configurable via environment variable
-ALLOWED_IP = os.environ.get('ALLOWED_IP', '159.196.13.45/32')
+ALLOWED_IP: str = os.environ.get('ALLOWED_IP', '159.196.13.45/32')
 
-def is_ip_allowed(source_ip):
+def is_ip_allowed(source_ip: str) -> bool:
     """Check if the source IP is in the allowed range"""
     try:
-        allowed_network = ipaddress.ip_network(ALLOWED_IP)
+        # Handle multiple IP addresses separated by commas
+        allowed_ips = [ip.strip() for ip in ALLOWED_IP.split(',')]
         client_ip = ipaddress.ip_address(source_ip)
-        return client_ip in allowed_network
+        
+        for allowed_ip in allowed_ips:
+            allowed_network = ipaddress.ip_network(allowed_ip)
+            if client_ip in allowed_network:
+                return True
+        return False
     except Exception as e:
         logger.error(f"Error checking IP address: {str(e)}")
         return False
 
-def normalize_risk_counts(risk_counts):
+def normalize_risk_counts(risk_counts: Dict[str, int]) -> tuple[Dict[str, int], int]:
     """Normalize risk counts to handle UNANSWERED questions"""
     normalized = {
         'HIGH': risk_counts.get('HIGH', 0),
@@ -32,17 +40,17 @@ def normalize_risk_counts(risk_counts):
         'NOT_APPLICABLE': risk_counts.get('NOT_APPLICABLE', 0)
     }
     
-    # Calculate compliance percentage
+    # Calculate compliance percentage as integer
     total_questions = sum(normalized.values())
     if total_questions > 0:
         compliant = normalized['NONE']
-        compliance_percentage = round((compliant / total_questions) * 100, 1)
+        compliance_percentage = round((compliant / total_questions) * 100)
     else:
         compliance_percentage = 0
     
     return normalized, compliance_percentage
 
-def get_workload_data(wa_client, params, headers):
+def get_workload_data(wa_client: Any, params: Dict[str, Any], headers: Dict[str, str]) -> Dict[str, Any]:
     """Custom operation to get comprehensive workload data"""
     try:
         workload_id = params.get('WorkloadId')
@@ -129,7 +137,7 @@ def get_workload_data(wa_client, params, headers):
         return {
             'statusCode': 200,
             'headers': headers,
-            'body': json.dumps(response_data)
+            'body': json.dumps(response_data, default=str)
         }
         
     except Exception as e:
@@ -141,7 +149,7 @@ def get_workload_data(wa_client, params, headers):
             'body': json.dumps({'error': f'Error processing workload data: {str(e)}'})
         }
 
-def lambda_handler(event, context):
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     # Set CORS headers
     headers = {
         'Access-Control-Allow-Origin': '*',
@@ -210,6 +218,46 @@ def lambda_handler(event, context):
                 'statusCode': 400,
                 'headers': headers,
                 'body': json.dumps({'error': f'Unknown operation: {operation}'})
+            }
+        
+        # Special handling for list_workloads to handle pagination
+        if sdk_operation == 'list_workloads':
+            logger.info("Handling list_workloads with pagination")
+            all_workloads = []
+            next_token = None
+            
+            while True:
+                # Prepare parameters for this page
+                page_params = params.copy()
+                if next_token:
+                    page_params['NextToken'] = next_token
+                
+                # Get this page of results
+                page_response = wa_client.list_workloads(**page_params)
+                
+                # Add workloads from this page
+                if 'WorkloadSummaries' in page_response:
+                    all_workloads.extend(page_response['WorkloadSummaries'])
+                
+                # Check if there are more pages
+                next_token = page_response.get('NextToken')
+                if not next_token:
+                    break
+                
+                logger.info(f"Retrieved {len(page_response.get('WorkloadSummaries', []))} workloads, continuing with NextToken")
+            
+            # Create combined response
+            combined_response = {
+                'WorkloadSummaries': all_workloads,
+                'ResponseMetadata': page_response.get('ResponseMetadata', {})
+            }
+            
+            logger.info(f"Total workloads retrieved: {len(all_workloads)}")
+            
+            return {
+                'statusCode': 200,
+                'headers': headers,
+                'body': json.dumps(combined_response, default=str)
             }
         
         # Special handling for get_workload which needs WorkloadId

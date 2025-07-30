@@ -1,0 +1,183 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Well-Architected Tool Visualizer - Global Resources (CloudFront, WAF)'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: wa-visualizer
+    Description: Name prefix for all resources
+    AllowedPattern: '^[a-zA-Z][a-zA-Z0-9-]*$'
+    ConstraintDescription: Must start with a letter and contain only alphanumeric characters and hyphens
+    
+  AllowedIPAddresses:
+    Type: CommaDelimitedList
+    Description: Comma-separated list of IP addresses in CIDR format (e.g., 203.0.113.0/32,198.51.100.0/32)
+    
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, test, prod]
+    Description: Environment name
+    
+  S3BucketDomainName:
+    Type: String
+    Description: Regional domain name of the S3 bucket from the regional stack
+    
+  RegionalStackRegion:
+    Type: String
+    Default: ap-southeast-2
+    Description: Region where the regional stack is deployed
+    
+  AccountId:
+    Type: String
+    Description: AWS Account ID (will be auto-detected)
+
+Resources:
+  # S3 Bucket Policy for CloudFront access (cross-region)
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Sub '${ProjectName}-website-${AccountId}-${RegionalStackRegion}'
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudFrontAccess
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub 'arn:aws:s3:::${ProjectName}-website-${AccountId}-${RegionalStackRegion}/*'
+            Condition:
+              StringEquals:
+                'AWS:SourceArn': !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+          - Sid: AllowCloudFrontListBucket
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:ListBucket
+            Resource: !Sub 'arn:aws:s3:::${ProjectName}-website-${AccountId}-${RegionalStackRegion}'
+            Condition:
+              StringEquals:
+                'AWS:SourceArn': !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+
+  # CloudFront Origin Access Control
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${ProjectName}-oac'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # IP Set for allowed IP addresses (supports multiple IPs)
+  IPSet:
+    Type: AWS::WAFv2::IPSet
+    Properties:
+      Name: !Sub '${ProjectName}-allowed-ips'
+      Scope: CLOUDFRONT
+      IPAddressVersion: IPV4
+      Addresses: !Ref AllowedIPAddresses
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # WAF Web ACL for IP restriction
+  WebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub '${ProjectName}-ip-restriction'
+      Scope: CLOUDFRONT
+      DefaultAction:
+        Block: {}
+      Rules:
+        - Name: AllowSpecificIPs
+          Priority: 1
+          Statement:
+            IPSetReferenceStatement:
+              Arn: !GetAtt IPSet.Arn
+          Action:
+            Allow: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AllowSpecificIPsRule
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub '${ProjectName}WebACL'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # CloudFront Distribution
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: !Sub '${ProjectName} Well-Architected Visualizer Distribution'
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          TrustedSigners: []
+          ViewerProtocolPolicy: redirect-to-https
+        DefaultRootObject: wa-api-visualizer.html
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Origins:
+          - Id: S3Origin
+            DomainName: !Ref S3BucketDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+            OriginAccessControlId: !Ref OriginAccessControl
+        PriceClass: PriceClass_100
+        WebACLId: !GetAtt WebACL.Arn
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  WebsiteURL:
+    Description: CloudFront Distribution URL
+    Value: !Sub 'https://${CloudFrontDistribution.DomainName}'
+    Export:
+      Name: !Sub '${ProjectName}-website-url'
+      
+  CloudFrontDistributionId:
+    Description: CloudFront Distribution ID
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub '${ProjectName}-distribution-id'
+      
+  AllowedIPAddresses:
+    Description: Currently allowed IP addresses
+    Value: !Join [', ', !Ref AllowedIPAddresses]
+    Export:
+      Name: !Sub '${ProjectName}-allowed-ips'
+      
+  IPSetId:
+    Description: WAF IP Set ID for managing allowed IPs
+    Value: !Ref IPSet
+    Export:
+      Name: !Sub '${ProjectName}-ipset-id'
+      
+  IPSetArn:
+    Description: WAF IP Set ARN
+    Value: !GetAtt IPSet.Arn
+    Export:
+      Name: !Sub '${ProjectName}-ipset-arn'

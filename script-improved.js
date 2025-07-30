@@ -1,5 +1,5 @@
 // API endpoint - this should be dynamically set during deployment
-const API_ENDPOINT = window.WA_API_ENDPOINT || 'https://n8peb2vyeg.execute-api.ap-southeast-2.amazonaws.com/prod/proxy';
+const API_ENDPOINT = window.WA_API_ENDPOINT || 'https://6khj1jz27b.execute-api.ap-southeast-2.amazonaws.com/prod/proxy';
 
 // DOM elements
 const workloadArnInput = document.getElementById('workload-arn');
@@ -178,7 +178,7 @@ async function fetchWorkload() {
         });
         
         // Display the workload data
-        displayWorkloadData(workloadData);
+        await displayWorkloadData(workloadData);
         
         if (reportContent) {
             reportContent.classList.remove('hidden');
@@ -193,7 +193,7 @@ async function fetchWorkload() {
 }
 
 // Function to display workload data
-function displayWorkloadData(data) {
+async function displayWorkloadData(data) {
     try {
         console.log('Displaying workload data:', data);
         
@@ -231,8 +231,12 @@ function displayWorkloadData(data) {
             }
         }
         
-        // Update overall compliance percentage
-        const compliancePercentage = data.overallCompliance;
+        // Update overall compliance percentage - calculate consistently with ring chart
+        const totalAnsweredQuestions = data.riskCounts.high + data.riskCounts.medium + data.riskCounts.compliant;
+        const compliancePercentage = totalAnsweredQuestions > 0 
+            ? Math.round((data.riskCounts.compliant / totalAnsweredQuestions) * 100 * 10) / 10  // Round to 1 decimal place
+            : 0;
+        
         updateElementText('compliance', `${compliancePercentage}%`);
         
         const complianceBar = document.getElementById('compliance-bar');
@@ -255,6 +259,11 @@ function displayWorkloadData(data) {
         
         // Display pillar summary
         displayPillarSummary(data.pillars);
+        
+        // Fetch and display recommendations
+        console.log('Fetching recommendations...');
+        await fetchRecommendations(data.workloadId, data);
+        displayRecommendations(data.recommendations);
         
         // Show warning if there are unanswered questions
         if (data.hasUnansweredQuestions) {
@@ -292,6 +301,251 @@ function showUnansweredWarning(unansweredCount) {
     const reportContent = document.getElementById('report-content');
     if (reportContent) {
         reportContent.insertBefore(warningDiv, reportContent.firstChild);
+    }
+}
+
+// Function to fetch recommendations for high and medium risk items
+async function fetchRecommendations(workloadId, processedData) {
+    try {
+        // Initialize recommendations array if it doesn't exist
+        if (!processedData.recommendations) {
+            processedData.recommendations = [];
+        }
+        
+        // For each pillar, get answers with high or medium risk
+        for (const pillar of processedData.pillars) {
+            // Skip pillars with no high or medium risks
+            if (pillar.riskCounts.HIGH === 0 && pillar.riskCounts.MEDIUM === 0) {
+                continue;
+            }
+            
+            // Get answers for this pillar
+            const answers = await callApi('list_answers', {
+                WorkloadId: workloadId,
+                LensAlias: 'wellarchitected',
+                PillarId: pillar.id
+            });
+            
+            // Filter for high and medium risk items
+            for (const answer of answers.AnswerSummaries || []) {
+                if (answer.Risk === 'HIGH' || answer.Risk === 'MEDIUM') {
+                    // Get detailed answer info
+                    const detail = await callApi('get_answer', {
+                        WorkloadId: workloadId,
+                        LensAlias: 'wellarchitected',
+                        QuestionId: answer.QuestionId
+                    });
+                    
+                    processedData.recommendations.push({
+                        title: answer.QuestionTitle,
+                        pillarName: pillar.name,
+                        risk: answer.Risk,
+                        improvementPlan: detail.Answer.ImprovementPlan || '',
+                        improvementPlanUrl: detail.Answer.ImprovementPlanUrl || ''
+                    });
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching recommendations:', error);
+    }
+}
+
+// Function to display recommendations with real data
+function displayRecommendations(recommendations) {
+    const recommendationsContainer = document.getElementById('recommendations-list');
+    recommendationsContainer.innerHTML = '';
+    
+    if (!recommendations || recommendations.length === 0) {
+        recommendationsContainer.innerHTML = '<p>No recommendations available.</p>';
+        return;
+    }
+    
+    recommendations.forEach((rec, index) => {
+        const recItem = document.createElement('div');
+        recItem.className = 'recommendation-item';
+        recItem.style.border = '1px solid #dee2e6';
+        recItem.style.borderRadius = '8px';
+        recItem.style.padding = '15px';
+        recItem.style.marginBottom = '15px';
+        recItem.style.backgroundColor = '#ffffff';
+        
+        // Set risk color without background highlighting
+        let riskColor = '#6c757d'; // Default gray for low risk
+        if (rec.risk === 'HIGH') {
+            riskColor = '#dc3545'; // Red for high risk
+        } else if (rec.risk === 'MEDIUM') {
+            riskColor = '#fd7e14'; // Amber/orange for medium risk
+        }
+        
+        // Transform question title into statement format
+        let transformedTitle = rec.title;
+        
+        // Remove "How do you " from the beginning (case insensitive)
+        transformedTitle = transformedTitle.replace(/^How do you /i, '');
+        
+        // Remove question mark from the end
+        transformedTitle = transformedTitle.replace(/\?$/, '');
+        
+        // Capitalize the first letter
+        transformedTitle = transformedTitle.charAt(0).toUpperCase() + transformedTitle.slice(1);
+        
+        // Only show improvement plan if it exists and is not empty
+        const improvementPlanHtml = rec.improvementPlan && rec.improvementPlan.trim() 
+            ? `<p>${rec.improvementPlan}</p>` 
+            : '';
+        
+        // Create expandable guidance section
+        const guidanceId = `guidance-${index}`;
+        const guidanceSection = rec.improvementPlanUrl ? `
+            <div class="mt-3">
+                <button class="btn btn-sm btn-outline-primary" type="button" onclick="toggleGuidance('${guidanceId}', '${rec.improvementPlanUrl}')">
+                    <span id="btn-text-${guidanceId}">Show Detailed Guidance</span>
+                </button>
+                <div id="${guidanceId}" class="mt-2" style="display: none;">
+                    <div class="p-3 bg-light border rounded">
+                        <div id="guidance-content-${guidanceId}">Loading guidance...</div>
+                    </div>
+                </div>
+            </div>
+        ` : '';
+        
+        recItem.innerHTML = `
+            <h5>${transformedTitle}</h5>
+            ${improvementPlanHtml}
+            <div class="d-flex justify-content-between">
+                <span>Pillar: ${rec.pillarName}</span>
+                <span style="color: ${riskColor}; font-weight: 500;">Risk: ${rec.risk}</span>
+            </div>
+            ${guidanceSection}
+        `;
+        
+        recommendationsContainer.appendChild(recItem);
+    });
+}
+
+// Function to toggle guidance display and load content
+async function toggleGuidance(guidanceId, guidanceUrl) {
+    const guidanceDiv = document.getElementById(guidanceId);
+    const buttonText = document.getElementById(`btn-text-${guidanceId}`);
+    const contentDiv = document.getElementById(`guidance-content-${guidanceId}`);
+    
+    if (guidanceDiv.style.display === 'none') {
+        // Show guidance
+        guidanceDiv.style.display = 'block';
+        buttonText.textContent = 'Hide Detailed Guidance';
+        
+        // Load content if not already loaded
+        if (contentDiv.innerHTML === 'Loading guidance...') {
+            try {
+                // Fetch the AWS guidance page content
+                const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(guidanceUrl)}`);
+                const data = await response.json();
+                
+                if (data.contents) {
+                    // Parse the HTML content to extract remediation links
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(data.contents, 'text/html');
+                    
+                    // Look for common patterns in AWS guidance pages
+                    const links = [];
+                    
+                    // Extract links from various sections
+                    const linkElements = doc.querySelectorAll('a[href]');
+                    linkElements.forEach(link => {
+                        const href = link.getAttribute('href');
+                        const text = link.textContent.trim();
+                        
+                        // Filter for relevant AWS documentation and service links
+                        if (href && text && (
+                            href.includes('docs.aws.amazon.com') ||
+                            href.includes('aws.amazon.com/') ||
+                            href.includes('console.aws.amazon.com') ||
+                            text.toLowerCase().includes('guide') ||
+                            text.toLowerCase().includes('documentation') ||
+                            text.toLowerCase().includes('best practice') ||
+                            text.toLowerCase().includes('tutorial') ||
+                            text.toLowerCase().includes('how to')
+                        )) {
+                            // Make sure href is absolute
+                            const absoluteHref = href.startsWith('http') ? href : `https://aws.amazon.com${href}`;
+                            links.push({ text, href: absoluteHref });
+                        }
+                    });
+                    
+                    // Remove duplicates
+                    const uniqueLinks = links.filter((link, index, self) => 
+                        index === self.findIndex(l => l.href === link.href)
+                    );
+                    
+                    if (uniqueLinks.length > 0) {
+                        let linksHtml = '<h6>Remediation Resources</h6><ul class="list-unstyled">';
+                        uniqueLinks.slice(0, 10).forEach(link => { // Limit to first 10 links
+                            linksHtml += `
+                                <li class="mb-2">
+                                    <a href="${link.href}" target="_blank" class="text-decoration-none">
+                                        <i class="fas fa-external-link-alt text-muted me-1"></i>
+                                        ${link.text}
+                                    </a>
+                                </li>
+                            `;
+                        });
+                        linksHtml += '</ul>';
+                        
+                        contentDiv.innerHTML = `
+                            <div class="guidance-content">
+                                ${linksHtml}
+                                <div class="mt-3 pt-3 border-top">
+                                    <small class="text-muted">
+                                        <a href="${guidanceUrl}" target="_blank">View complete guidance on AWS</a>
+                                    </small>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // Fallback if no links found
+                        contentDiv.innerHTML = `
+                            <div class="guidance-content">
+                                <h6>AWS Well-Architected Guidance</h6>
+                                <p>No specific remediation links could be extracted from this guidance page.</p>
+                                <a href="${guidanceUrl}" target="_blank" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-external-link-alt"></i> View Full Guidance
+                                </a>
+                            </div>
+                        `;
+                    }
+                } else {
+                    throw new Error('Unable to fetch content');
+                }
+            } catch (error) {
+                console.error('Error fetching guidance content:', error);
+                // Fallback content
+                contentDiv.innerHTML = `
+                    <div class="guidance-content">
+                        <h6>AWS Well-Architected Guidance</h6>
+                        <p>Unable to load remediation links directly. Please visit the AWS guidance page:</p>
+                        <a href="${guidanceUrl}" target="_blank" class="btn btn-primary btn-sm">
+                            <i class="fas fa-external-link-alt"></i> Open AWS Guidance
+                        </a>
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                The guidance page typically includes:
+                                <ul class="mt-2">
+                                    <li>Implementation steps and best practices</li>
+                                    <li>AWS service recommendations</li>
+                                    <li>Code examples and configuration templates</li>
+                                    <li>Common pitfalls and how to avoid them</li>
+                                </ul>
+                            </small>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    } else {
+        // Hide guidance
+        guidanceDiv.style.display = 'none';
+        buttonText.textContent = 'Show Detailed Guidance';
     }
 }
 
@@ -359,7 +613,15 @@ function createPillarChart(pillars) {
     }
     
     const labels = pillars.map(p => p.name);
-    const complianceData = pillars.map(p => p.compliance);
+    
+    // Calculate compliance data consistently with other charts
+    const complianceData = pillars.map(p => {
+        const riskCounts = p.riskCounts;
+        const totalAnsweredQuestions = riskCounts.HIGH + riskCounts.MEDIUM + riskCounts.NONE;
+        return totalAnsweredQuestions > 0 
+            ? Math.round((riskCounts.NONE / totalAnsweredQuestions) * 100 * 10) / 10  // Round to 1 decimal place
+            : 0;
+    });
     
     pillarChart = new Chart(ctx, {
         type: 'radar',
@@ -411,6 +673,12 @@ function displayPillarSummary(pillars) {
         const riskCounts = pillar.riskCounts;
         const hasUnanswered = riskCounts.UNANSWERED > 0;
         
+        // Calculate pillar compliance consistently with overall compliance
+        const totalAnsweredQuestions = riskCounts.HIGH + riskCounts.MEDIUM + riskCounts.NONE;
+        const pillarCompliance = totalAnsweredQuestions > 0 
+            ? Math.round((riskCounts.NONE / totalAnsweredQuestions) * 100 * 10) / 10  // Round to 1 decimal place
+            : 0;
+        
         pillarCard.innerHTML = `
             <div class="card pillar-card">
                 <div class="card-header">
@@ -440,10 +708,10 @@ function displayPillarSummary(pillars) {
                         </div>
                     ` : ''}
                     <div class="mt-2">
-                        <small>Compliance: ${pillar.compliance}%</small>
+                        <small>Compliance: ${pillarCompliance}%</small>
                         <div class="progress" style="height: 8px;">
-                            <div class="progress-bar ${pillar.compliance < 30 ? 'bg-danger' : pillar.compliance < 70 ? 'bg-warning' : 'bg-success'}" 
-                                 style="width: ${pillar.compliance}%"></div>
+                            <div class="progress-bar ${pillarCompliance < 30 ? 'bg-danger' : pillarCompliance < 70 ? 'bg-warning' : 'bg-success'}" 
+                                 style="width: ${pillarCompliance}%"></div>
                         </div>
                     </div>
                 </div>
