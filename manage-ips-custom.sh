@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# IP Address Management Script for Well-Architected Visualizer (Updated for Custom Stack Names)
+# IP Address Management Script for Well-Architected Visualizer (Custom Stack Names)
 # This script helps you add, remove, or list IP addresses after deployment
 
 set -e
@@ -10,9 +10,6 @@ GLOBAL_STACK_NAME="cevo-wa-visualiser-tool-global"
 REGIONAL_STACK_NAME="cevo-wa-visualiser-tool-regional"
 GLOBAL_REGION="us-east-1"
 REGIONAL_REGION="ap-southeast-2"
-
-# Fallback to original stack names for backward compatibility
-FALLBACK_STACK_NAMES=("wa-visualizer-multi-ip" "wa-visualizer-container")
 
 # Colors for output
 RED='\033[0;31m'
@@ -33,7 +30,6 @@ usage() {
     echo "  current                 Show your current public IP"
     echo ""
     echo "Options:"
-    echo "  --region REGION         AWS region (default: auto-detect)"
     echo "  --help                  Show this help message"
     echo ""
     echo "Examples:"
@@ -48,7 +44,6 @@ usage() {
 # Parse command line arguments
 COMMAND=""
 IP_VALUE=""
-OVERRIDE_REGION=""
 while [[ $# -gt 0 ]]; do
     case $1 in
         list|add|remove|replace|current)
@@ -59,10 +54,6 @@ while [[ $# -gt 0 ]]; do
             else
                 shift 1
             fi
-            ;;
-        --region)
-            OVERRIDE_REGION="$2"
-            shift 2
             ;;
         --help)
             usage
@@ -91,71 +82,26 @@ check_aws_config() {
     fi
 }
 
-# Function to detect deployment type and get WAF IP set details
-detect_deployment_and_get_waf() {
-    echo -e "${BLUE}Detecting deployment type...${NC}"
+# Function to get WAF IP set details
+get_waf_ipset_details() {
+    echo -e "${BLUE}Getting WAF IP set details...${NC}"
     
-    # First try custom stack names
-    if aws cloudformation describe-stacks --stack-name $GLOBAL_STACK_NAME --region $GLOBAL_REGION > /dev/null 2>&1; then
-        echo "Found custom deployment: $GLOBAL_STACK_NAME"
-        DEPLOYMENT_TYPE="custom"
-        USE_WAF=true
-        
-        # Get IP set details from the global stack
-        IPSET_INFO=$(aws cloudformation describe-stack-resources \
-            --stack-name $GLOBAL_STACK_NAME \
-            --region $GLOBAL_REGION \
-            --query "StackResources[?ResourceType=='AWS::WAFv2::IPSet'].PhysicalResourceId" \
-            --output text)
-        
-        if [ -z "$IPSET_INFO" ]; then
-            echo -e "${RED}❌ Could not find WAF IP set in stack $GLOBAL_STACK_NAME${NC}"
-            exit 1
-        fi
-        
-        # Parse the IP set info (format: name|id|scope)
-        IFS='|' read -r IPSET_NAME IPSET_ID IPSET_SCOPE <<< "$IPSET_INFO"
-        echo "Found WAF IP set: $IPSET_NAME (ID: $IPSET_ID, Scope: $IPSET_SCOPE)"
-        
-    else
-        # Try fallback stack names for backward compatibility
-        USE_WAF=false
-        DEPLOYMENT_TYPE=""
-        STACK_NAME=""
-        
-        for stack in "${FALLBACK_STACK_NAMES[@]}"; do
-            if [ -n "$OVERRIDE_REGION" ]; then
-                REGION="$OVERRIDE_REGION"
-            else
-                REGION="$REGIONAL_REGION"
-            fi
-            
-            if aws cloudformation describe-stacks --stack-name "$stack" --region $REGION > /dev/null 2>&1; then
-                STACK_NAME="$stack"
-                if [[ "$stack" == *"container"* ]]; then
-                    DEPLOYMENT_TYPE="container"
-                else
-                    DEPLOYMENT_TYPE="standard"
-                fi
-                echo "Found $DEPLOYMENT_TYPE deployment stack: $STACK_NAME"
-                break
-            fi
-        done
-        
-        if [ -z "$STACK_NAME" ]; then
-            echo -e "${RED}❌ No Well-Architected Visualizer stack found${NC}"
-            echo "Looked for:"
-            echo "  • $GLOBAL_STACK_NAME (custom deployment)"
-            for stack in "${FALLBACK_STACK_NAMES[@]}"; do
-                echo "  • $stack (standard deployment)"
-            done
-            echo ""
-            echo "Make sure you've deployed the solution first."
-            exit 1
-        fi
+    # Get IP set details from the global stack
+    IPSET_INFO=$(aws cloudformation describe-stack-resources \
+        --stack-name $GLOBAL_STACK_NAME \
+        --region $GLOBAL_REGION \
+        --query "StackResources[?ResourceType=='AWS::WAFv2::IPSet'].PhysicalResourceId" \
+        --output text)
+    
+    if [ -z "$IPSET_INFO" ]; then
+        echo -e "${RED}❌ Could not find WAF IP set in stack $GLOBAL_STACK_NAME${NC}"
+        exit 1
     fi
     
-    echo -e "${GREEN}✅ Using $DEPLOYMENT_TYPE deployment${NC}"
+    # Parse the IP set info (format: name|id|scope)
+    IFS='|' read -r IPSET_NAME IPSET_ID IPSET_SCOPE <<< "$IPSET_INFO"
+    
+    echo "Found IP set: $IPSET_NAME (ID: $IPSET_ID, Scope: $IPSET_SCOPE)"
 }
 
 # Function to get current IP addresses from WAF IP set
@@ -171,20 +117,6 @@ get_current_ips_from_waf() {
     
     if [ -z "$CURRENT_IPS" ]; then
         CURRENT_IPS=""
-    fi
-}
-
-# Function to get current IP addresses from CloudFormation stack (legacy)
-get_current_ips_from_stack() {
-    CURRENT_IPS=$(aws cloudformation describe-stacks \
-        --stack-name $STACK_NAME \
-        --region $REGION \
-        --query "Stacks[0].Parameters[?ParameterKey=='AllowedIPAddresses'].ParameterValue" \
-        --output text)
-    
-    if [ -z "$CURRENT_IPS" ]; then
-        echo -e "${RED}❌ Could not retrieve current IP addresses from stack${NC}"
-        exit 1
     fi
 }
 
@@ -223,42 +155,6 @@ update_waf_ipset() {
     echo -e "${YELLOW}⏳ Changes may take 5-15 minutes to propagate through CloudFront${NC}"
 }
 
-# Function to update CloudFormation stack (legacy)
-update_stack() {
-    local new_ips="$1"
-    echo -e "${BLUE}Updating CloudFormation stack with new IP addresses...${NC}"
-    
-    aws cloudformation update-stack \
-        --stack-name $STACK_NAME \
-        --use-previous-template \
-        --capabilities CAPABILITY_NAMED_IAM \
-        --region $REGION \
-        --parameters \
-            ParameterKey=AllowedIPAddresses,ParameterValue=\"$new_ips\" \
-            ParameterKey=ProjectName,UsePreviousValue=true \
-            ParameterKey=Environment,UsePreviousValue=true
-    
-    echo "Waiting for stack update to complete..."
-    aws cloudformation wait stack-update-complete --stack-name $STACK_NAME --region $REGION
-    
-    echo -e "${GREEN}✅ Stack updated successfully${NC}"
-    
-    # Invalidate CloudFront cache
-    CLOUDFRONT_ID=$(aws cloudformation describe-stacks \
-        --stack-name $STACK_NAME \
-        --region $REGION \
-        --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
-        --output text)
-    
-    if [ -n "$CLOUDFRONT_ID" ]; then
-        echo -e "${BLUE}Invalidating CloudFront cache...${NC}"
-        aws cloudfront create-invalidation \
-            --distribution-id $CLOUDFRONT_ID \
-            --paths "/*" > /dev/null
-        echo -e "${GREEN}✅ CloudFront cache invalidated${NC}"
-    fi
-}
-
 # Function to show current public IP
 show_current_ip() {
     echo -e "${BLUE}Your current public IP address:${NC}"
@@ -272,13 +168,8 @@ show_current_ip() {
 # Function to list current allowed IPs
 list_ips() {
     check_aws_config
-    detect_deployment_and_get_waf
-    
-    if [ "$USE_WAF" = true ]; then
-        get_current_ips_from_waf
-    else
-        get_current_ips_from_stack
-    fi
+    get_waf_ipset_details
+    get_current_ips_from_waf
     
     echo -e "${BLUE}Current allowed IP addresses:${NC}"
     if [ -z "$CURRENT_IPS" ]; then
@@ -298,13 +189,8 @@ add_ip() {
     validate_cidr "$new_ip"
     
     check_aws_config
-    detect_deployment_and_get_waf
-    
-    if [ "$USE_WAF" = true ]; then
-        get_current_ips_from_waf
-    else
-        get_current_ips_from_stack
-    fi
+    get_waf_ipset_details
+    get_current_ips_from_waf
     
     # Check if IP already exists
     if echo "$CURRENT_IPS" | grep -q "$new_ip"; then
@@ -320,13 +206,7 @@ add_ip() {
     fi
     
     echo -e "${BLUE}Adding IP address: $new_ip${NC}"
-    
-    if [ "$USE_WAF" = true ]; then
-        update_waf_ipset "$NEW_IPS"
-    else
-        update_stack "$NEW_IPS"
-    fi
-    
+    update_waf_ipset "$NEW_IPS"
     echo -e "${GREEN}✅ IP address $new_ip added successfully${NC}"
 }
 
@@ -336,13 +216,8 @@ remove_ip() {
     validate_cidr "$remove_ip"
     
     check_aws_config
-    detect_deployment_and_get_waf
-    
-    if [ "$USE_WAF" = true ]; then
-        get_current_ips_from_waf
-    else
-        get_current_ips_from_stack
-    fi
+    get_waf_ipset_details
+    get_current_ips_from_waf
     
     # Check if IP exists
     if ! echo "$CURRENT_IPS" | grep -q "$remove_ip"; then
@@ -356,19 +231,8 @@ remove_ip() {
     # Clean up any double commas
     NEW_IPS=$(echo "$NEW_IPS" | sed 's/,,/,/g' | sed 's/^,//' | sed 's/,$//')
     
-    if [ -z "$NEW_IPS" ] && [ "$USE_WAF" = false ]; then
-        echo -e "${RED}❌ Cannot remove the last IP address. At least one IP must be allowed.${NC}"
-        exit 1
-    fi
-    
     echo -e "${BLUE}Removing IP address: $remove_ip${NC}"
-    
-    if [ "$USE_WAF" = true ]; then
-        update_waf_ipset "$NEW_IPS"
-    else
-        update_stack "$NEW_IPS"
-    fi
-    
+    update_waf_ipset "$NEW_IPS"
     echo -e "${GREEN}✅ IP address $remove_ip removed successfully${NC}"
 }
 
@@ -384,22 +248,11 @@ replace_ips() {
     done
     
     check_aws_config
-    detect_deployment_and_get_waf
-    
-    if [ "$USE_WAF" = true ]; then
-        get_current_ips_from_waf
-    else
-        get_current_ips_from_stack
-    fi
+    get_waf_ipset_details
+    get_current_ips_from_waf
     
     echo -e "${BLUE}Replacing all IP addresses with: $new_ips${NC}"
-    
-    if [ "$USE_WAF" = true ]; then
-        update_waf_ipset "$new_ips"
-    else
-        update_stack "$new_ips"
-    fi
-    
+    update_waf_ipset "$new_ips"
     echo -e "${GREEN}✅ IP addresses replaced successfully${NC}"
 }
 
