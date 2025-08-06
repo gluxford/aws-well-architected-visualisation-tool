@@ -21,6 +21,11 @@ Parameters:
     MinValue: 3
     MaxValue: 900
     Description: Lambda function timeout in seconds
+    
+  LambdaS3Key:
+    Type: String
+    Default: lambda-function.zip
+    Description: S3 key for Lambda function zip file
 
 Resources:
   # S3 Bucket for website hosting
@@ -94,7 +99,7 @@ Resources:
       Timeout: !Ref LambdaTimeout
       Code:
         S3Bucket: !Sub '${ProjectName}-website-${AWS::AccountId}-${AWS::Region}'
-        S3Key: lambda-function.zip
+        S3Key: !Ref LambdaS3Key
       MemorySize: 256
       Tags:
         - Key: Project

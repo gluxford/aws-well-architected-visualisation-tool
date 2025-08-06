@@ -1,0 +1,28 @@
+# Generated files
+lambda-function.zip
+*.zip
+
+# Temporary directories
+temp_lambda/
+__pycache__/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+
+# Test files
+test-*
+*-test.py

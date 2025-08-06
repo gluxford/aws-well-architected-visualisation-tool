@@ -14,6 +14,10 @@ const reportContent = document.getElementById('report-content');
 let riskChart = null;
 let pillarChart = null;
 
+// Global workload data for recommendations export
+let currentWorkloadData = null;
+let currentRecommendationsData = null;
+
 // Event listeners
 document.addEventListener('DOMContentLoaded', () => {
     // Set current date in footer
@@ -44,6 +48,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportRiskSummaryBtn = document.getElementById('export-risk-summary-btn');
     if (exportRiskSummaryBtn) {
         exportRiskSummaryBtn.addEventListener('click', exportRiskSummary);
+    }
+    
+    // Export recommendations to Excel button
+    const exportRecommendationsExcelBtn = document.getElementById('export-recommendations-excel-btn');
+    if (exportRecommendationsExcelBtn) {
+        exportRecommendationsExcelBtn.addEventListener('click', exportRecommendationsToExcel);
     }
     
     console.log(`Well-Architected Visualizer initialized with API endpoint: ${API_ENDPOINT}`);
@@ -196,6 +206,9 @@ async function fetchWorkload() {
 async function displayWorkloadData(data) {
     try {
         console.log('Displaying workload data:', data);
+        
+        // Store workload data globally for Excel export
+        currentWorkloadData = data;
         
         // Display workload information
         updateElementText('workload-name', data.workloadName || 'N/A');
@@ -355,6 +368,9 @@ async function fetchRecommendations(workloadId, processedData) {
 function displayRecommendations(recommendations) {
     const recommendationsContainer = document.getElementById('recommendations-list');
     recommendationsContainer.innerHTML = '';
+    
+    // Store recommendations data globally for Excel export
+    currentRecommendationsData = recommendations;
     
     if (!recommendations || recommendations.length === 0) {
         recommendationsContainer.innerHTML = '<p>No recommendations available.</p>';
@@ -614,14 +630,8 @@ function createPillarChart(pillars) {
     
     const labels = pillars.map(p => p.name);
     
-    // Calculate compliance data consistently with other charts
-    const complianceData = pillars.map(p => {
-        const riskCounts = p.riskCounts;
-        const totalAnsweredQuestions = riskCounts.HIGH + riskCounts.MEDIUM + riskCounts.NONE;
-        return totalAnsweredQuestions > 0 
-            ? Math.round((riskCounts.NONE / totalAnsweredQuestions) * 100 * 10) / 10  // Round to 1 decimal place
-            : 0;
-    });
+    // Use compliance data from the Lambda function (already correctly calculated)
+    const complianceData = pillars.map(p => p.compliance);
     
     pillarChart = new Chart(ctx, {
         type: 'radar',
@@ -673,11 +683,8 @@ function displayPillarSummary(pillars) {
         const riskCounts = pillar.riskCounts;
         const hasUnanswered = riskCounts.UNANSWERED > 0;
         
-        // Calculate pillar compliance consistently with overall compliance
-        const totalAnsweredQuestions = riskCounts.HIGH + riskCounts.MEDIUM + riskCounts.NONE;
-        const pillarCompliance = totalAnsweredQuestions > 0 
-            ? Math.round((riskCounts.NONE / totalAnsweredQuestions) * 100 * 10) / 10  // Round to 1 decimal place
-            : 0;
+        // Use pillar compliance from the Lambda function (already correctly calculated)
+        const pillarCompliance = pillar.compliance;
         
         pillarCard.innerHTML = `
             <div class="card pillar-card">
@@ -779,6 +786,138 @@ function exportPillarSummary(pillarName) {
     }
 }
 
+// Function to export recommendations to Excel
+function exportRecommendationsToExcel() {
+    if (!currentWorkloadData || !currentRecommendationsData || currentRecommendationsData.length === 0) {
+        alert('No recommendations data available to export. Please load a workload first.');
+        return;
+    }
+    
+    if (typeof XLSX === 'undefined') {
+        alert('Excel export functionality not available. XLSX library not loaded.');
+        return;
+    }
+    
+    try {
+        // Create workbook
+        const wb = XLSX.utils.book_new();
+        
+        // Create workload summary sheet
+        const summaryData = [
+            ['Well-Architected Framework - Recommendations Report'],
+            [''],
+            ['Workload Information'],
+            ['Workload Name', currentWorkloadData.workloadName || 'N/A'],
+            ['Workload ID', currentWorkloadData.workloadId || 'N/A'],
+            ['Environment', currentWorkloadData.environment || 'N/A'],
+            ['Owner', currentWorkloadData.ownerName || 'N/A'],
+            ['Generated Date', new Date().toLocaleDateString()],
+            [''],
+            ['Risk Summary'],
+            ['High Risk Items', currentWorkloadData.riskCounts?.high || 0],
+            ['Medium Risk Items', currentWorkloadData.riskCounts?.medium || 0],
+            ['Compliant Items', currentWorkloadData.riskCounts?.compliant || 0],
+            ['Overall Compliance', `${currentWorkloadData.overallCompliance || 0}%`],
+            ['']
+        ];
+        
+        const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+        
+        // Set column widths for summary sheet
+        summaryWs['!cols'] = [
+            { width: 25 },
+            { width: 30 }
+        ];
+        
+        // Add summary sheet to workbook
+        XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+        
+        // Create recommendations sheet
+        const recommendationsData = [
+            ['Recommendations and Detailed Guidance'],
+            [''],
+            ['Question/Area', 'Pillar', 'Risk Level', 'Improvement Plan URL']
+        ];
+        
+        // Add each recommendation
+        currentRecommendationsData.forEach(rec => {
+            // Transform question title (remove "How do you" and question mark)
+            let transformedTitle = rec.title;
+            transformedTitle = transformedTitle.replace(/^How do you /i, '');
+            transformedTitle = transformedTitle.replace(/\?$/, '');
+            transformedTitle = transformedTitle.charAt(0).toUpperCase() + transformedTitle.slice(1);
+            
+            recommendationsData.push([
+                transformedTitle,
+                rec.pillarName,
+                rec.risk,
+                rec.improvementPlanUrl || 'N/A'
+            ]);
+        });
+        
+        const recommendationsWs = XLSX.utils.aoa_to_sheet(recommendationsData);
+        
+        // Set column widths for recommendations sheet
+        recommendationsWs['!cols'] = [
+            { width: 50 },  // Question/Area
+            { width: 20 },  // Pillar
+            { width: 15 },  // Risk Level
+            { width: 60 }   // Improvement Plan URL
+        ];
+        
+        // Add recommendations sheet to workbook
+        XLSX.utils.book_append_sheet(wb, recommendationsWs, 'Recommendations');
+        
+        // Create detailed guidance sheet with pillar breakdown
+        const pillarData = [
+            ['Pillar Risk Breakdown'],
+            [''],
+            ['Pillar', 'High Risk', 'Medium Risk', 'Compliant', 'Compliance %']
+        ];
+        
+        if (currentWorkloadData.pillars) {
+            currentWorkloadData.pillars.forEach(pillar => {
+                pillarData.push([
+                    pillar.name,
+                    pillar.riskCounts?.HIGH || 0,
+                    pillar.riskCounts?.MEDIUM || 0,
+                    pillar.riskCounts?.NONE || 0,
+                    `${pillar.compliance || 0}%`
+                ]);
+            });
+        }
+        
+        const pillarWs = XLSX.utils.aoa_to_sheet(pillarData);
+        
+        // Set column widths for pillar sheet
+        pillarWs['!cols'] = [
+            { width: 25 },  // Pillar
+            { width: 12 },  // High Risk
+            { width: 12 },  // Medium Risk
+            { width: 12 },  // Compliant
+            { width: 15 }   // Compliance %
+        ];
+        
+        // Add pillar sheet to workbook
+        XLSX.utils.book_append_sheet(wb, pillarWs, 'Pillar Breakdown');
+        
+        // Generate filename with workload name and date
+        const workloadName = (currentWorkloadData.workloadName || 'Workload').replace(/[^a-zA-Z0-9]/g, '_');
+        const dateStr = new Date().toISOString().split('T')[0];
+        const filename = `WA_Recommendations_${workloadName}_${dateStr}.xlsx`;
+        
+        // Save the file
+        XLSX.writeFile(wb, filename);
+        
+        console.log('Excel file exported successfully:', filename);
+        
+    } catch (error) {
+        console.error('Error exporting to Excel:', error);
+        alert('Error exporting to Excel. Please try again.');
+    }
+}
+
 // Make functions available globally for HTML onclick handlers
 window.exportRiskSummary = exportRiskSummary;
 window.exportPillarSummary = exportPillarSummary;
+window.exportRecommendationsToExcel = exportRecommendationsToExcel;

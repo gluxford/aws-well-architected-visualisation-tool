@@ -31,21 +31,26 @@ def is_ip_allowed(source_ip: str) -> bool:
         return False
 
 def normalize_risk_counts(risk_counts: Dict[str, int]) -> tuple[Dict[str, int], int]:
-    """Normalize risk counts to handle UNANSWERED questions"""
+    """Normalize risk counts to handle UNANSWERED questions that are actually out-of-scope"""
+    # Handle both cases: UNANSWERED questions that are out-of-scope, and direct NOT_APPLICABLE
     normalized = {
         'HIGH': risk_counts.get('HIGH', 0),
         'MEDIUM': risk_counts.get('MEDIUM', 0),
         'NONE': risk_counts.get('NONE', 0),
-        'UNANSWERED': risk_counts.get('UNANSWERED', 0),
-        'NOT_APPLICABLE': risk_counts.get('NOT_APPLICABLE', 0)
+        'UNANSWERED': 0,  # Reset to 0, we'll handle this properly below
+        'NOT_APPLICABLE': risk_counts.get('NOT_APPLICABLE', 0) + risk_counts.get('UNANSWERED', 0)
     }
     
-    # Calculate compliance percentage as integer
-    total_questions = sum(normalized.values())
-    if total_questions > 0:
+    # Calculate compliance percentage - exclude NOT_APPLICABLE (out-of-scope) items entirely
+    # Only count answered questions (HIGH, MEDIUM, NONE) for compliance calculation
+    # Out-of-scope questions are neither compliant nor non-compliant - they're just not applicable
+    answered_questions = normalized['HIGH'] + normalized['MEDIUM'] + normalized['NONE']
+    if answered_questions > 0:
         compliant = normalized['NONE']
-        compliance_percentage = round((compliant / total_questions) * 100)
+        compliance_percentage = round((compliant / answered_questions) * 100)
     else:
+        # If no answered questions (all out-of-scope), return 0% compliance
+        # This indicates no assessment has been done, not that it's compliant
         compliance_percentage = 0
     
     return normalized, compliance_percentage
@@ -122,14 +127,14 @@ def get_workload_data(wa_client: Any, params: Dict[str, Any], headers: Dict[str,
                 'high': normalized_risks['HIGH'],
                 'medium': normalized_risks['MEDIUM'],
                 'compliant': normalized_risks['NONE'],
-                'unanswered': normalized_risks['UNANSWERED'],
-                'notApplicable': normalized_risks['NOT_APPLICABLE']
+                'unanswered': normalized_risks['UNANSWERED'],  # Should now be 0
+                'notApplicable': normalized_risks['NOT_APPLICABLE']  # Should include the out-of-scope questions
             },
             'overallCompliance': compliance_percentage,
             'pillars': pillars,
             'lensVersion': lens_review.get('LensVersion', ''),
             'lensStatus': lens_review.get('LensStatus', ''),
-            'hasUnansweredQuestions': normalized_risks['UNANSWERED'] > 0
+            'hasUnansweredQuestions': normalized_risks['UNANSWERED'] > 0  # Should now be False
         }
         
         logger.info(f"Successfully processed workload data for {workload_id}")

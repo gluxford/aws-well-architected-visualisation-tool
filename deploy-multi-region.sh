@@ -77,8 +77,61 @@ echo "Global region: $GLOBAL_REGION"
 echo "IP addresses: $IP_ADDRESSES"
 echo ""
 
-# Step 1: Deploy regional stack (ap-southeast-2)
-echo "Step 1: Deploying regional resources to $REGIONAL_REGION..."
+# Step 1: Create S3 bucket and upload Lambda function
+echo "Step 1: Preparing Lambda function and S3 bucket..."
+S3_BUCKET_NAME="${PROJECT_NAME}-website-${ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}-${REGIONAL_REGION}"
+
+# Create S3 bucket if it doesn't exist
+aws s3api head-bucket --bucket "$S3_BUCKET_NAME" --region "$REGIONAL_REGION" 2>/dev/null || \
+aws s3 mb "s3://$S3_BUCKET_NAME" --region "$REGIONAL_REGION"
+
+# Build Lambda function package from lambda-proxy directory
+echo "Building Lambda function package..."
+if [ ! -d "lambda-proxy" ]; then
+    echo "❌ Error: lambda-proxy directory not found"
+    exit 1
+fi
+
+# Remove existing lambda-function.zip if it exists
+if [ -f "lambda-function.zip" ]; then
+    rm lambda-function.zip
+fi
+
+# Create the zip file from lambda-proxy directory
+cd lambda-proxy
+zip -r ../lambda-function.zip . \
+    -x "*.git*" \
+    -x "*.DS_Store*" \
+    -x "__pycache__/*" \
+    -x "*.pyc" \
+    -x "deploy.sh" \
+    -x "README.md" \
+    -x "*.yaml" \
+    -x "cloudformation.yaml" \
+    -x "template.yaml" \
+    -x "trust-policy.json" \
+    -x "wellarchitected-policy.json" \
+    -x "test-credentials.py" \
+    -x "function.zip" >/dev/null
+cd ..
+
+if [ ! -f "lambda-function.zip" ]; then
+    echo "❌ Error: Failed to create lambda-function.zip"
+    exit 1
+fi
+
+echo "✅ Lambda function package created successfully"
+
+# Create timestamped S3 key to force CloudFormation update
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+LAMBDA_S3_KEY="lambda-function-${TIMESTAMP}.zip"
+
+# Upload Lambda function zip file with timestamp
+echo "Uploading Lambda function..."
+aws s3 cp lambda-function.zip "s3://$S3_BUCKET_NAME/$LAMBDA_S3_KEY" --region "$REGIONAL_REGION"
+
+# Step 2: Deploy regional stack (ap-southeast-2)
+echo "Step 2: Deploying regional resources to $REGIONAL_REGION..."
 REGIONAL_STACK_NAME="${PROJECT_NAME}-regional"
 
 aws cloudformation deploy \
@@ -88,6 +141,7 @@ aws cloudformation deploy \
     --parameter-overrides \
         ProjectName="$PROJECT_NAME" \
         Environment="$ENVIRONMENT" \
+        LambdaS3Key="$LAMBDA_S3_KEY" \
     --capabilities CAPABILITY_NAMED_IAM \
     --tags \
         Project="$PROJECT_NAME" \
@@ -120,8 +174,8 @@ echo "API Gateway URL: $API_GATEWAY_URL"
 echo "S3 Bucket Name: $S3_BUCKET_NAME"
 echo ""
 
-# Step 2: Deploy global stack (us-east-1)
-echo "Step 2: Deploying global resources to $GLOBAL_REGION..."
+# Step 3: Deploy global stack (us-east-1)
+echo "Step 3: Deploying global resources to $GLOBAL_REGION..."
 GLOBAL_STACK_NAME="${PROJECT_NAME}-global"
 
 # Get AWS Account ID
@@ -160,7 +214,7 @@ CLOUDFRONT_DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
     --output text)
 
 echo ""
-echo "Step 3: Uploading website files to S3..."
+echo "Step 4: Uploading website files to S3..."
 
 # Update the HTML file with the correct API Gateway URL
 sed "s|YOUR_API_GATEWAY_URL_HERE|$API_GATEWAY_URL|g" wa-api-visualizer.html > wa-api-visualizer-updated.html
