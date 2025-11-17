@@ -1,0 +1,237 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Well-Architected Tool Visualizer - Regional Resources with Secure Cognito'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: wa-visualizer
+    
+  Environment:
+    Type: String
+    Default: prod
+    
+  LambdaS3Bucket:
+    Type: String
+    
+  LambdaS3Key:
+    Type: String
+
+Resources:
+  # S3 Bucket for website hosting
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-website-${AWS::AccountId}-${AWS::Region}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: wa-api-visualizer.html
+
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: WellArchitectedAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - wellarchitected:ListWorkloads
+                  - wellarchitected:GetWorkload
+                  - wellarchitected:GetAnswer
+                  - wellarchitected:ListAnswers
+                  - wellarchitected:GetLensReview
+                  - wellarchitected:ListLensReviews
+                  - wellarchitected:GetLensReviewReport
+                Resource: '*'
+
+  # Pre-signup Lambda Role
+  PreSignupLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # Pre-signup Lambda Function
+  PreSignupLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-presignup-trigger'
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt PreSignupLambdaRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          
+          def lambda_handler(event, context):
+              print(f"Pre-signup event: {json.dumps(event)}")
+              
+              email = event['request']['userAttributes']['email']
+              print(f"Email attempting signup: {email}")
+              
+              # Only allow cevo.com.au email addresses
+              if not email.endswith('@cevo.com.au'):
+                  print(f"Rejecting email: {email} - not cevo.com.au domain")
+                  raise Exception('Only cevo.com.au email addresses are allowed')
+              
+              print(f"Approving email: {email}")
+              # Auto-confirm the user
+              event['response']['autoConfirmUser'] = True
+              event['response']['autoVerifyEmail'] = True
+              
+              return event
+
+  # Lambda Permission for Cognito
+  PreSignupLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PreSignupLambda
+      Action: lambda:InvokeFunction
+      Principal: cognito-idp.amazonaws.com
+
+  # Cognito User Pool with Lambda trigger
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    DependsOn: PreSignupLambdaPermission
+    Properties:
+      UserPoolName: !Sub '${ProjectName}-user-pool'
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      LambdaConfig:
+        PreSignUp: !GetAtt PreSignupLambda.Arn
+
+  # User Pool Client
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${ProjectName}-client'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  # Lambda Function for API
+  ProxyLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-proxy'
+      Runtime: python3.12
+      Handler: lambda_function_improved.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaS3Bucket
+        S3Key: !Ref LambdaS3Key
+
+  # API Gateway
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${ProjectName}-api'
+
+  ProxyResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: proxy
+
+  ProxyOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ProxyResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+
+  ProxyPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ProxyResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProxyLambdaFunction.Arn}/invocations'
+
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: 
+      - ProxyOptionsMethod
+      - ProxyPostMethod
+    Properties:
+      RestApiId: !Ref ApiGateway
+      StageName: !Ref Environment
+
+  LambdaApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProxyLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/POST/proxy
+
+Outputs:
+  ApiGatewayURL:
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+      
+  S3BucketName:
+    Value: !Ref WebsiteBucket
+      
+  S3BucketRegionalDomainName:
+    Value: !GetAtt WebsiteBucket.RegionalDomainName
+      
+  UserPoolId:
+    Value: !Ref UserPool
+      
+  UserPoolClientId:
+    Value: !Ref UserPoolClient

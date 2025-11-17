@@ -26,6 +26,11 @@ Parameters:
     Type: String
     Default: lambda-function.zip
     Description: S3 key for Lambda function zip file
+    
+  LambdaHandler:
+    Type: String
+    Default: lambda_function_improved.lambda_handler
+    Description: Lambda function handler
 
 Resources:
   # S3 Bucket for website hosting
@@ -52,6 +57,97 @@ Resources:
           Value: !Ref ProjectName
         - Key: Environment
           Value: !Ref Environment
+
+  # Cognito User Pool with Lambda trigger and MFA
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${ProjectName}-user-pool'
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      AutoVerifiedAttributes: []
+      UsernameAttributes:
+        - email
+      MfaConfiguration: REQUIRED
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+      LambdaConfig:
+        PreSignUp: !GetAtt PreSignupLambda.Arn
+      UserPoolTags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+    DependsOn: PreSignupLambdaPermission
+
+  # Cognito User Pool Client
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${ProjectName}-client'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      SupportedIdentityProviders:
+        - COGNITO
+
+  # Pre-signup Lambda trigger for email domain validation
+  PreSignupLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-presignup-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  PreSignupLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-presignup-trigger'
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt PreSignupLambdaRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          
+          def lambda_handler(event, context):
+              email = event['request']['userAttributes']['email']
+              
+              # Check if email domain is cevo.com.au
+              if not email.endswith('@cevo.com.au'):
+                  raise Exception('Only cevo.com.au email addresses are allowed')
+              
+              # Auto-confirm the user
+              event['response']['autoConfirmUser'] = True
+              event['response']['autoVerifyEmail'] = True
+              
+              return event
+
+  # Lambda permission for Cognito trigger
+  PreSignupLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PreSignupLambda
+      Action: lambda:InvokeFunction
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt UserPool.Arn
 
   # Lambda Execution Role
   LambdaExecutionRole:
@@ -88,13 +184,137 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
-  # Lambda Function
+  # Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${ProjectName}-user-pool'
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+      UserPoolTags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+
+  # Cognito User Pool Client
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${ProjectName}-client'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        - !Sub 'https://${WebsiteBucket.RegionalDomainName}'
+      LogoutURLs:
+        - !Sub 'https://${WebsiteBucket.RegionalDomainName}'
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      AllowedOAuthFlowsUserPoolClient: true
+
+  # Pre-signup Lambda trigger for email domain validation
+  PreSignupLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-presignup-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  PreSignupLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-presignup-trigger'
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt PreSignupLambdaRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          
+          def lambda_handler(event, context):
+              email = event['request']['userAttributes']['email']
+              
+              # Check if email domain is cevo.com.au
+              if not email.endswith('@cevo.com.au'):
+                  raise Exception('Only cevo.com.au email addresses are allowed')
+              
+              # Auto-confirm the user
+              event['response']['autoConfirmUser'] = True
+              event['response']['autoVerifyEmail'] = True
+              
+              return event
+
+  # Lambda permission for Cognito trigger
+  PreSignupLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PreSignupLambda
+      Action: lambda:InvokeFunction
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt UserPool.Arn
+
+  # Update User Pool with Lambda trigger
+  UserPoolLambdaConfig:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${ProjectName}-user-pool'
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+      LambdaConfig:
+        PreSignUp: !GetAtt PreSignupLambda.Arn
+      UserPoolTags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+    DependsOn: PreSignupLambdaPermission
+
   ProxyLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub '${ProjectName}-proxy'
       Runtime: python3.12
-      Handler: lambda_function_improved.lambda_handler
+      Handler: !Ref LambdaHandler
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: !Ref LambdaTimeout
       Code:
@@ -213,3 +433,15 @@ Outputs:
     Value: !GetAtt WebsiteBucket.Arn
     Export:
       Name: !Sub '${ProjectName}-bucket-arn'
+      
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub '${ProjectName}-user-pool-id'
+      
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub '${ProjectName}-user-pool-client-id'

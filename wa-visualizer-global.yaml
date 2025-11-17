@@ -9,10 +9,6 @@ Parameters:
     AllowedPattern: '^[a-zA-Z][a-zA-Z0-9-]*$'
     ConstraintDescription: Must start with a letter and contain only alphanumeric characters and hyphens
     
-  AllowedIPAddresses:
-    Type: CommaDelimitedList
-    Description: Comma-separated list of IP addresses in CIDR format (e.g., 203.0.113.0/32,198.51.100.0/32)
-    
   Environment:
     Type: String
     Default: prod
@@ -31,6 +27,14 @@ Parameters:
   AccountId:
     Type: String
     Description: AWS Account ID (will be auto-detected)
+    
+  UserPoolId:
+    Type: String
+    Description: Cognito User Pool ID from regional stack
+    
+  UserPoolClientId:
+    Type: String
+    Description: Cognito User Pool Client ID from regional stack
 
 Resources:
   # S3 Bucket Policy for CloudFront access (cross-region)
@@ -69,51 +73,7 @@ Resources:
         SigningBehavior: always
         SigningProtocol: sigv4
 
-  # IP Set for allowed IP addresses (supports multiple IPs)
-  IPSet:
-    Type: AWS::WAFv2::IPSet
-    Properties:
-      Name: !Sub '${ProjectName}-allowed-ips'
-      Scope: CLOUDFRONT
-      IPAddressVersion: IPV4
-      Addresses: !Ref AllowedIPAddresses
-      Tags:
-        - Key: Project
-          Value: !Ref ProjectName
-        - Key: Environment
-          Value: !Ref Environment
-
-  # WAF Web ACL for IP restriction
-  WebACL:
-    Type: AWS::WAFv2::WebACL
-    Properties:
-      Name: !Sub '${ProjectName}-ip-restriction'
-      Scope: CLOUDFRONT
-      DefaultAction:
-        Block: {}
-      Rules:
-        - Name: AllowSpecificIPs
-          Priority: 1
-          Statement:
-            IPSetReferenceStatement:
-              Arn: !GetAtt IPSet.Arn
-          Action:
-            Allow: {}
-          VisibilityConfig:
-            SampledRequestsEnabled: true
-            CloudWatchMetricsEnabled: true
-            MetricName: AllowSpecificIPsRule
-      VisibilityConfig:
-        SampledRequestsEnabled: true
-        CloudWatchMetricsEnabled: true
-        MetricName: !Sub '${ProjectName}WebACL'
-      Tags:
-        - Key: Project
-          Value: !Ref ProjectName
-        - Key: Environment
-          Value: !Ref Environment
-
-  # CloudFront Distribution
+  # CloudFront Distribution (no WAF restriction)
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -142,7 +102,6 @@ Resources:
               OriginAccessIdentity: ''
             OriginAccessControlId: !Ref OriginAccessControl
         PriceClass: PriceClass_100
-        WebACLId: !GetAtt WebACL.Arn
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
       Tags:
@@ -163,21 +122,3 @@ Outputs:
     Value: !Ref CloudFrontDistribution
     Export:
       Name: !Sub '${ProjectName}-distribution-id'
-      
-  AllowedIPAddresses:
-    Description: Currently allowed IP addresses
-    Value: !Join [', ', !Ref AllowedIPAddresses]
-    Export:
-      Name: !Sub '${ProjectName}-allowed-ips'
-      
-  IPSetId:
-    Description: WAF IP Set ID for managing allowed IPs
-    Value: !Ref IPSet
-    Export:
-      Name: !Sub '${ProjectName}-ipset-id'
-      
-  IPSetArn:
-    Description: WAF IP Set ARN
-    Value: !GetAtt IPSet.Arn
-    Export:
-      Name: !Sub '${ProjectName}-ipset-arn'

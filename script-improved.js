@@ -1,5 +1,5 @@
 // API endpoint - this should be dynamically set during deployment
-const API_ENDPOINT = window.WA_API_ENDPOINT || 'https://6khj1jz27b.execute-api.ap-southeast-2.amazonaws.com/prod/proxy';
+const API_ENDPOINT = window.WA_API_ENDPOINT || 'https://599uy7tb4a.execute-api.ap-southeast-2.amazonaws.com/prod/proxy';
 
 // DOM elements
 const workloadArnInput = document.getElementById('workload-arn');
@@ -380,18 +380,19 @@ function displayRecommendations(recommendations) {
     recommendations.forEach((rec, index) => {
         const recItem = document.createElement('div');
         recItem.className = 'recommendation-item';
-        recItem.style.border = '1px solid #dee2e6';
+        recItem.style.border = '1px solid #555';
         recItem.style.borderRadius = '8px';
         recItem.style.padding = '15px';
         recItem.style.marginBottom = '15px';
-        recItem.style.backgroundColor = '#ffffff';
+        recItem.style.backgroundColor = '#3a3a3a';
+        recItem.style.color = '#e0e0e0';
         
-        // Set risk color without background highlighting
-        let riskColor = '#6c757d'; // Default gray for low risk
+        // Set risk color with vibrant colors
+        let riskColor = '#4ecdc4'; // Bright teal for low risk
         if (rec.risk === 'HIGH') {
-            riskColor = '#dc3545'; // Red for high risk
+            riskColor = '#ff4757'; // Bright red for high risk
         } else if (rec.risk === 'MEDIUM') {
-            riskColor = '#fd7e14'; // Amber/orange for medium risk
+            riskColor = '#ffa502'; // Bright orange for medium risk
         }
         
         // Transform question title into statement format
@@ -427,11 +428,11 @@ function displayRecommendations(recommendations) {
         ` : '';
         
         recItem.innerHTML = `
-            <h5>${transformedTitle}</h5>
+            <h5 style="color: #00d4ff; font-weight: bold;">${transformedTitle}</h5>
             ${improvementPlanHtml}
             <div class="d-flex justify-content-between">
-                <span>Pillar: ${rec.pillarName}</span>
-                <span style="color: ${riskColor}; font-weight: 500;">Risk: ${rec.risk}</span>
+                <span style="color: #4ecdc4; font-weight: bold;">Pillar: ${rec.pillarName}</span>
+                <span style="color: ${riskColor}; font-weight: bold;">Risk: ${rec.risk}</span>
             </div>
             ${guidanceSection}
         `;
@@ -577,13 +578,13 @@ function createRiskChart(highRisk, mediumRisk, compliantRisk, unansweredRisk = 0
     
     const labels = ['High Risk', 'Medium Risk', 'Compliant'];
     const data = [highRisk, mediumRisk, compliantRisk];
-    const colors = ['#dc3545', '#ffc107', '#28a745'];
+    const colors = ['#ff4757', '#ffa502', '#2ed573'];
     
     // Add unanswered if there are any
     if (unansweredRisk > 0) {
         labels.push('Unanswered');
         data.push(unansweredRisk);
-        colors.push('#17a2b8');
+        colors.push('#00d4ff');
     }
     
     riskChart = new Chart(ctx, {
@@ -594,7 +595,7 @@ function createRiskChart(highRisk, mediumRisk, compliantRisk, unansweredRisk = 0
                 data: data,
                 backgroundColor: colors,
                 borderWidth: 2,
-                borderColor: '#fff'
+                borderColor: '#2a2a2a'
             }]
         },
         options: {
@@ -602,7 +603,13 @@ function createRiskChart(highRisk, mediumRisk, compliantRisk, unansweredRisk = 0
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    position: 'bottom'
+                    position: 'bottom',
+                    labels: {
+                        color: '#e0e0e0',
+                        font: {
+                            weight: 'bold'
+                        }
+                    }
                 },
                 tooltip: {
                     callbacks: {
@@ -640,12 +647,13 @@ function createPillarChart(pillars) {
             datasets: [{
                 label: 'Compliance %',
                 data: complianceData,
-                borderColor: '#007bff',
-                backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                borderWidth: 2,
-                pointBackgroundColor: '#007bff',
+                borderColor: '#00d4ff',
+                backgroundColor: 'rgba(0, 212, 255, 0.2)',
+                borderWidth: 3,
+                pointBackgroundColor: '#ff6b6b',
                 pointBorderColor: '#fff',
-                pointBorderWidth: 2
+                pointBorderWidth: 3,
+                pointRadius: 6
             }]
         },
         options: {
@@ -656,13 +664,34 @@ function createPillarChart(pillars) {
                     beginAtZero: true,
                     max: 100,
                     ticks: {
-                        stepSize: 20
+                        stepSize: 20,
+                        color: '#e0e0e0',
+                        backdropColor: 'transparent'
+                    },
+                    grid: {
+                        color: '#4ecdc4'
+                    },
+                    angleLines: {
+                        color: '#ffa502'
+                    },
+                    pointLabels: {
+                        color: '#00d4ff',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
                     }
                 }
             },
             plugins: {
                 legend: {
-                    position: 'bottom'
+                    position: 'bottom',
+                    labels: {
+                        color: '#e0e0e0',
+                        font: {
+                            weight: 'bold'
+                        }
+                    }
                 }
             }
         }
