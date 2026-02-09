@@ -1,10 +1,11 @@
 # Well-Architected Report Visualizer
 
-A comprehensive web-based visualization tool for AWS Well-Architected Framework reports with Excel export capabilities. This solution provides an interactive dashboard to view workload assessment results with IP-based access control and professional reporting features.
+A comprehensive web-based visualization tool for AWS Well-Architected Framework reports with Excel export capabilities. This solution provides an interactive dashboard to view workload assessment results with secure Cognito-based authentication and professional reporting features.
 
 ## 🌟 Key Features
 
-- 🔒 **IP-based Access Control** - Restrict access to specific IP addresses or ranges via AWS WAF
+- 🔒 **Cognito Authentication** - Secure user authentication with email domain restriction (@cevo.com.au)
+- 🛡️ **Multi-Factor Authentication (MFA)** - Required MFA for all users using authenticator apps
 - 📊 **Interactive Dashboard** - User-friendly interface with charts and visual summaries
 - 📈 **Risk Distribution Analysis** - Visual breakdown of risks across Well-Architected pillars
 - 📋 **Accurate Compliance Metrics** - Properly calculated compliance percentages excluding out-of-scope items
@@ -18,34 +19,38 @@ A comprehensive web-based visualization tool for AWS Well-Architected Framework 
 
 The solution consists of the following AWS components:
 
-1. **CloudFront Distribution** - HTTPS-enabled CDN with WAF-based IP restrictions
+1. **CloudFront Distribution** - HTTPS-enabled CDN for global content delivery
 2. **S3 Bucket** - Static website hosting for the web application
-3. **WAF Web ACL** - IP-based access control layer
+3. **Cognito User Pool** - User authentication with email domain restriction and MFA
 4. **Lambda Function** - Proxy for AWS Well-Architected API calls with enhanced data processing
 5. **API Gateway** - RESTful API endpoint for the Lambda function
 6. **IAM Role** - Minimal required permissions for Lambda to access Well-Architected API
 
 ### How It Works
 
-1. User accesses the web application via CloudFront (IP-restricted)
-2. Web application makes requests to API Gateway
-3. API Gateway forwards requests to the Lambda function
-4. Lambda function calls the AWS Well-Architected API and processes compliance data
-5. Lambda function returns properly calculated results with CORS headers
-6. Web application renders interactive dashboard with export capabilities
+1. User accesses the web application via CloudFront
+2. Cognito authentication overlay prompts for sign-in or registration
+3. Only @cevo.com.au email addresses can register (domain-restricted)
+4. Users must set up MFA using an authenticator app (Google Authenticator, Authy, etc.)
+5. After authentication, web application makes requests to API Gateway
+6. API Gateway forwards requests to the Lambda function
+7. Lambda function calls the AWS Well-Architected API and processes compliance data
+8. Lambda function returns properly calculated results with CORS headers
+9. Web application renders interactive dashboard with export capabilities
 
 ## 📋 Prerequisites
 
 ### Required Tools
 - **AWS CLI** - Installed and configured with appropriate permissions
-- **curl** - For IP address detection and API testing
+- **curl** - For API testing
+- **Authenticator App** - Google Authenticator, Authy, or similar for MFA setup
 
 ### Required AWS Permissions
 Your AWS user/role needs permissions to create:
 - CloudFormation stacks
 - S3 buckets and objects
 - CloudFront distributions
-- WAF Web ACLs and IP sets
+- Cognito User Pools
 - Lambda functions
 - API Gateway APIs
 - IAM roles and policies
@@ -53,70 +58,84 @@ Your AWS user/role needs permissions to create:
 ### Well-Architected Workloads
 Create at least one workload in the AWS Well-Architected Tool console before using the visualizer.
 
+### Email Requirements
+Users must have a **@cevo.com.au** email address to register and access the application.
+
 ## 🚀 Quick Start
 
-### 1. Get Your IP Address
+### 1. Deploy the Solution
 ```bash
-curl -s https://checkip.amazonaws.com
-```
-
-### 2. Deploy the Solution
-```bash
-./deploy-multi-region.sh --ip-addresses "YOUR_IP/32" --profile YOUR_AWS_PROFILE
+./deploy-cognito.sh --profile YOUR_AWS_PROFILE
 ```
 
 **Example:**
 ```bash
-./deploy-multi-region.sh --ip-addresses "203.0.113.45/32" --profile cevo-production
+./deploy-cognito.sh --profile cevo-production
 ```
 
-### 3. Access Your Application
+### 2. Access Your Application
 Open the provided CloudFront URL in your browser (displayed at the end of deployment).
+
+### 3. Register Your Account
+1. Click "Sign up" on the authentication screen
+2. Enter your @cevo.com.au email address
+3. Create a strong password
+4. Scan the QR code with your authenticator app
+5. Enter the 6-digit code to complete MFA setup
+
+### 4. Sign In
+1. Enter your email and password
+2. Enter the current 6-digit code from your authenticator app
+3. Access the Well-Architected visualizer dashboard
 
 ## 📖 Detailed Usage Guide
 
 ### Deployment Options
 
-#### Single IP Address
+#### Basic Deployment
 ```bash
-./deploy-multi-region.sh --ip-addresses "203.0.113.45/32"
-```
-
-#### Multiple IP Addresses
-```bash
-./deploy-multi-region.sh --ip-addresses "203.0.113.45/32,198.51.100.10/32,192.0.2.100/32"
-```
-
-#### Office Network Range
-```bash
-./deploy-multi-region.sh --ip-addresses "203.0.113.0/24"
+./deploy-cognito.sh
 ```
 
 #### With Custom Project Name
 ```bash
-./deploy-multi-region.sh --ip-addresses "203.0.113.45/32" --project-name "my-wa-tool" --environment "dev"
+./deploy-cognito.sh --project-name "my-wa-tool" --environment "dev"
 ```
 
-### Managing IP Addresses
-
-After deployment, use the IP management script to modify allowed IP addresses:
-
+#### With Specific AWS Profile
 ```bash
-# Show your current IP
-./manage-ips.sh current
-
-# List currently allowed IPs
-./manage-ips.sh list
-
-# Add a new IP address
-./manage-ips.sh add 203.0.113.45/32
-
-# Remove an IP address
-./manage-ips.sh remove 203.0.113.45/32
-
-# Replace all IPs at once
-./manage-ips.sh replace "203.0.113.45/32,198.51.100.10/32"
+./deploy-cognito.sh --profile "cevo-production" --environment "prod"
 ```
+
+### User Management
+
+#### First-Time User Registration
+1. Navigate to the CloudFront URL
+2. Click "Sign up" on the authentication screen
+3. Enter your @cevo.com.au email address
+4. Create a password (minimum 8 characters, must include uppercase, lowercase, numbers, and special characters)
+5. Scan the displayed QR code with your authenticator app
+6. Enter the 6-digit verification code
+7. Complete registration and sign in
+
+#### Subsequent Sign-Ins
+1. Enter your email and password
+2. Enter the current 6-digit MFA code from your authenticator app
+3. Access the dashboard
+
+#### Password Requirements
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one number
+- At least one special character
+
+#### Supported Authenticator Apps
+- Google Authenticator
+- Microsoft Authenticator
+- Authy
+- 1Password
+- Any TOTP-compatible authenticator app
 
 ## 🎯 Using the Web Application
 
@@ -181,8 +200,7 @@ The Excel export creates a professional multi-sheet workbook containing:
 ### Custom Deployment Parameters
 
 ```bash
-./deploy-multi-region.sh \
-  --ip-addresses "203.0.113.0/24" \
+./deploy-cognito.sh \
   --project-name "custom-wa-tool" \
   --environment "production" \
   --profile "my-aws-profile"
@@ -190,15 +208,25 @@ The Excel export creates a professional multi-sheet workbook containing:
 
 ### Environment Variables
 The deployment script supports these parameters:
-- `--ip-addresses` - Comma-separated list of IP addresses/ranges (required)
 - `--project-name` - Custom project name (default: cevo-wa-visualiser-tool)
 - `--environment` - Environment name (default: prod)
 - `--profile` - AWS profile to use
 
 ### Regional Deployment
 The solution deploys to:
-- **Regional Resources** (ap-southeast-2): S3, Lambda, API Gateway
-- **Global Resources** (us-east-1): CloudFront, WAF
+- **Regional Resources** (ap-southeast-2): S3, Lambda, API Gateway, Cognito User Pool
+- **Global Resources** (us-east-1): CloudFront
+
+### Customizing Email Domain Restriction
+To allow different email domains, modify the `wa-visualizer-regional.yaml` template:
+
+1. Locate the `PreSignupLambda` function code
+2. Update the email validation logic:
+```python
+if not email.endswith('@your-domain.com'):
+    raise Exception('Only your-domain.com email addresses are allowed')
+```
+3. Redeploy the solution
 
 ## 🛠️ Technical Details
 
@@ -207,8 +235,14 @@ The solution deploys to:
 - **Comprehensive API Proxy** - Full access to Well-Architected API operations
 - **CORS Support** - Proper cross-origin resource sharing headers
 - **Error Handling** - Robust error handling and logging
-- **IP Validation** - Server-side IP address validation
 - **Dependency Management** - Includes boto3 1.26.0 and botocore 1.29.0
+
+### Cognito Authentication Features
+- **Email Domain Restriction** - Only @cevo.com.au addresses can register
+- **Automatic User Confirmation** - No email verification required for approved domains
+- **Mandatory MFA** - Software token MFA required for all users
+- **Session Management** - Secure session handling with automatic token refresh
+- **Sign-Out Capability** - Users can sign out and clear their session
 
 ### Build Process
 The deployment script automatically:
@@ -221,17 +255,18 @@ The deployment script automatically:
 ### File Structure
 ```
 ├── README.md                           # This comprehensive guide
-├── deploy-multi-region.sh              # Main deployment script with integrated build
-├── manage-ips.sh                       # IP address management utility
-├── wa-visualizer-regional.yaml         # CloudFormation template (regional resources)
+├── deploy-cognito.sh                   # Main deployment script with Cognito authentication
+├── wa-visualizer-regional.yaml         # CloudFormation template (regional resources + Cognito)
 ├── wa-visualizer-global.yaml           # CloudFormation template (global resources)
 ├── wa-api-visualizer.html              # Web application HTML
 ├── script-improved.js                  # JavaScript with Excel export functionality
+├── auth-overlay.js                     # Cognito authentication overlay with MFA
 ├── lambda-proxy/                       # Lambda function source directory
 │   ├── lambda_function_improved.py     # Main Lambda function with enhanced processing
 │   ├── requirements.txt                # Python dependencies
 │   └── [boto3/botocore dependencies]   # AWS SDK libraries
-├── cleanup-multi-region.sh             # Resource cleanup script
+├── cleanup-cognito.sh                  # Resource cleanup script
+├── DEPLOYMENT-GUIDE.md                 # Detailed deployment instructions
 └── SECURITY-UPDATES.md                 # Security information and updates
 ```
 
@@ -239,16 +274,20 @@ The deployment script automatically:
 
 ### Common Issues
 
-#### "Access Denied" Error
-**Cause:** Your IP address may have changed or is not in the allowed list.
-**Solution:**
-```bash
-# Check your current IP
-curl -s https://checkip.amazonaws.com
+#### "Only cevo.com.au email addresses are allowed"
+**Cause:** Attempting to register with a non-approved email domain.
+**Solution:** Use a valid @cevo.com.au email address or update the email domain restriction in the CloudFormation template.
 
-# Add your new IP
-./manage-ips.sh add YOUR_NEW_IP/32
-```
+#### "Invalid verification code" during MFA setup
+**Cause:** Time synchronization issue or incorrect code entry.
+**Solution:** 
+- Ensure your device's time is synchronized
+- Wait for a new code to generate
+- Try entering the code immediately after it appears
+
+#### "User does not exist" error
+**Cause:** Account not yet created or incorrect email address.
+**Solution:** Click "Sign up" to create a new account first.
 
 #### "No Workloads Found"
 **Cause:** No workloads exist in the AWS Well-Architected Tool.
@@ -257,6 +296,13 @@ curl -s https://checkip.amazonaws.com
 #### CloudFront Takes Time to Update
 **Cause:** CloudFront distributions have propagation delays.
 **Solution:** Changes may take 5-15 minutes to propagate globally.
+
+#### MFA Code Not Working
+**Cause:** Time drift between device and AWS servers.
+**Solution:**
+- Ensure your device's clock is accurate
+- Rescan the QR code if needed
+- Contact administrator to reset MFA if locked out
 
 #### Excel Export Not Working
 **Cause:** JavaScript libraries not loaded or browser compatibility.
@@ -283,24 +329,32 @@ curl -s https://checkip.amazonaws.com
      -d '{"operation":"list_workloads","params":{}}'
    ```
 
-3. **Verify IP Address**
+3. **Check Cognito User Pool**
    ```bash
-   ./manage-ips.sh current
+   aws cognito-idp list-user-pools --max-results 10 --region ap-southeast-2
+   ```
+
+4. **View User Pool Users**
+   ```bash
+   aws cognito-idp list-users --user-pool-id YOUR_USER_POOL_ID --region ap-southeast-2
    ```
 
 ## 🧹 Cleanup
 
 ### Remove All Resources
 ```bash
+# Use the cleanup script
+./cleanup-cognito.sh
+```
+
+**Or manually delete stacks:**
+```bash
 # Delete CloudFormation stacks
 aws cloudformation delete-stack --stack-name cevo-wa-visualiser-tool-regional --region ap-southeast-2
 aws cloudformation delete-stack --stack-name cevo-wa-visualiser-tool-global --region us-east-1
-
-# Or use the cleanup script
-./cleanup-multi-region.sh
 ```
 
-**Note:** S3 buckets must be emptied before deletion. The cleanup script handles this automatically.
+**Note:** S3 buckets and Cognito User Pools must be emptied before deletion. The cleanup script handles this automatically.
 
 ## 📊 Compliance Calculation Details
 
@@ -322,11 +376,15 @@ The tool uses an enhanced compliance calculation that:
 
 - **Latest Runtime** - Uses Python 3.12 for security patches
 - **Updated Dependencies** - boto3 1.26.0 and botocore 1.29.0
-- **IP Restriction** - Access limited to specified IP addresses via AWS WAF
+- **Cognito Authentication** - Industry-standard user authentication and authorization
+- **Email Domain Restriction** - Only approved email domains can register (@cevo.com.au)
+- **Mandatory MFA** - All users required to set up multi-factor authentication
 - **HTTPS Only** - All traffic encrypted through CloudFront
 - **No Direct S3 Access** - Website only accessible through CloudFront
 - **IAM Role-based Access** - Lambda uses minimal required permissions
 - **No Credentials in Browser** - All AWS API calls happen server-side
+- **Session Management** - Secure token-based session handling
+- **Auto-confirmation** - Approved domain users are automatically confirmed (no email verification needed)
 
 ## 🤝 Contributing
 
