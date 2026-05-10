@@ -420,8 +420,8 @@ function displayRecommendations(recommendations) {
                     <span id="btn-text-${guidanceId}">Show Detailed Guidance</span>
                 </button>
                 <div id="${guidanceId}" class="mt-2" style="display: none;">
-                    <div class="p-3 bg-light border rounded">
-                        <div id="guidance-content-${guidanceId}">Loading guidance...</div>
+                    <div class="p-3 border rounded" style="background-color: #2a2a2a; border-color: #444 !important;">
+                        <div id="guidance-content-${guidanceId}" style="color: #e0e0e0;">Loading guidance...</div>
                     </div>
                 </div>
             </div>

@@ -60,72 +60,87 @@ function createAuthOverlay() {
     `;
     
     overlay.innerHTML = `
-        <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; width: 90%;">
-            <h3 style="text-align: center; margin-bottom: 20px;">AWS Well-Architected Visualizer</h3>
+        <div style="background: #2a2a2a; padding: 30px; border-radius: 8px; max-width: 400px; width: 90%; border: 1px solid #444;">
+            <h3 style="text-align: center; margin-bottom: 20px; color: #00d4ff;">AWS Well-Architected Visualizer</h3>
             
             <!-- Sign In Form -->
             <div id="signin-form">
-                <h5>Sign In</h5>
+                <h5 style="color: #e0e0e0;">Sign In</h5>
                 <form id="login-form" style="margin-bottom: 15px;">
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px;">Email:</label>
-                        <input type="email" id="auth-email" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <label style="display: block; margin-bottom: 5px; color: #e0e0e0;">Email:</label>
+                        <input type="email" id="auth-email" required style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background-color: #3a3a3a; color: #e0e0e0;">
                     </div>
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px;">Password:</label>
-                        <input type="password" id="auth-password" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <label style="display: block; margin-bottom: 5px; color: #e0e0e0;">Password:</label>
+                        <input type="password" id="auth-password" required style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background-color: #3a3a3a; color: #e0e0e0;">
                     </div>
-                    <button type="submit" style="width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Sign In</button>
+                    <button type="submit" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 4px; cursor: pointer;">Sign In</button>
                 </form>
-                <p style="text-align: center; margin: 0;">
-                    Don't have an account? <a href="#" id="show-signup" style="color: #007bff; text-decoration: none;">Sign up</a>
+                <p style="text-align: center; margin: 0; color: #e0e0e0;">
+                    Don't have an account? <a href="#" id="show-signup" style="color: #00d4ff; text-decoration: none;">Sign up</a>
                 </p>
             </div>
             
             <!-- Sign Up Form -->
             <div id="signup-form" style="display: none;">
-                <h5>Sign Up</h5>
+                <h5 style="color: #e0e0e0;">Sign Up</h5>
                 <form id="register-form" style="margin-bottom: 15px;">
                     <div style="margin-bottom: 15px;">
-                        <label id="signup-email-label" style="display: block; margin-bottom: 5px;">${emailLabel}</label>
-                        <input type="email" id="signup-email" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <label id="signup-email-label" style="display: block; margin-bottom: 5px; color: #e0e0e0;">${emailLabel}</label>
+                        <input type="email" id="signup-email" required style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background-color: #3a3a3a; color: #e0e0e0;">
                     </div>
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px;">Password:</label>
-                        <input type="password" id="signup-password" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <label style="display: block; margin-bottom: 5px; color: #e0e0e0;">Password:</label>
+                        <input type="password" id="signup-password" required style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background-color: #3a3a3a; color: #e0e0e0;">
                     </div>
-                    <button type="submit" style="width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Sign Up</button>
+                    <button type="submit" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #2ed573 0%, #17a2b8 100%); color: white; border: none; border-radius: 4px; cursor: pointer;">Sign Up</button>
                 </form>
-                <p style="text-align: center; margin: 0;">
-                    Already have an account? <a href="#" id="show-signin" style="color: #007bff; text-decoration: none;">Sign in</a>
+                <p style="text-align: center; margin: 0; color: #e0e0e0;">
+                    Already have an account? <a href="#" id="show-signin" style="color: #00d4ff; text-decoration: none;">Sign in</a>
                 </p>
             </div>
             
             <!-- MFA Setup Form -->
             <div id="mfa-setup-form" style="display: none;">
-                <h5>Setup MFA</h5>
-                <p style="font-size: 14px; margin-bottom: 15px;">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.):</p>
+                <h5 style="color: #e0e0e0;">Setup MFA</h5>
+                <p style="font-size: 14px; margin-bottom: 15px; color: #e0e0e0;">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.):</p>
                 <div id="qr-code" style="text-align: center; margin: 15px 0;"></div>
-                <p style="font-size: 12px; margin-bottom: 15px;">Or enter this code manually: <code id="secret-code"></code></p>
+                <p style="font-size: 12px; margin-bottom: 15px; color: #e0e0e0;">Or enter this code manually: <code id="secret-code" style="color: #00d4ff;"></code></p>
                 <form id="mfa-setup-verify-form">
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px;">Enter 6-digit code from your app:</label>
-                        <input type="text" id="mfa-code" required maxlength="6" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <label style="display: block; margin-bottom: 5px; color: #e0e0e0;">Enter 6-digit code from your app:</label>
+                        <input type="text" id="mfa-code" required maxlength="6" style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background-color: #3a3a3a; color: #e0e0e0; text-align: center; font-size: 18px;">
                     </div>
-                    <button type="submit" style="width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Verify & Complete Setup</button>
+                    <button type="submit" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 4px; cursor: pointer;">Verify & Complete Setup</button>
                 </form>
             </div>
             
             <!-- MFA Verification Form -->
             <div id="mfa-verify-form" style="display: none;">
-                <h5>Enter MFA Code</h5>
-                <p style="font-size: 14px; margin-bottom: 15px;">Enter the 6-digit code from your authenticator app:</p>
+                <h5 style="color: #e0e0e0;">Enter MFA Code</h5>
+                <p style="font-size: 14px; margin-bottom: 15px; color: #e0e0e0;">Enter the 6-digit code from your authenticator app:</p>
                 <form id="mfa-verify-login-form">
                     <div style="margin-bottom: 15px;">
-                        <input type="text" id="mfa-login-code" required maxlength="6" placeholder="000000" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-align: center; font-size: 18px;">
+                        <input type="text" id="mfa-login-code" required maxlength="6" placeholder="000000" style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background-color: #3a3a3a; color: #e0e0e0; text-align: center; font-size: 18px;">
                     </div>
-                    <button type="submit" style="width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Verify</button>
+                    <button type="submit" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 4px; cursor: pointer;">Verify</button>
                 </form>
+            </div>
+            
+            <!-- Email Verification Form -->
+            <div id="verify-email-form" style="display: none;">
+                <h5 style="color: #e0e0e0;">Verify Your Email</h5>
+                <p style="font-size: 14px; margin-bottom: 15px; color: #e0e0e0;">Enter the verification code sent to your email:</p>
+                <form id="verify-email-code-form">
+                    <div style="margin-bottom: 15px;">
+                        <input type="text" id="verify-code" required maxlength="6" placeholder="000000" style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background-color: #3a3a3a; color: #e0e0e0; text-align: center; font-size: 18px;">
+                    </div>
+                    <button type="submit" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #2ed573 0%, #17a2b8 100%); color: white; border: none; border-radius: 4px; cursor: pointer;">Verify Email</button>
+                </form>
+                <p style="text-align: center; margin-top: 10px;">
+                    <a href="#" id="resend-code" style="color: #00d4ff; text-decoration: none; font-size: 14px;">Resend code</a>
+                </p>
             </div>
             
             <div id="auth-message" style="margin-top: 15px; padding: 10px; border-radius: 4px; display: none;"></div>
@@ -149,10 +164,23 @@ function createAuthOverlay() {
     document.getElementById('register-form').onsubmit = handleSignUp;
     document.getElementById('mfa-setup-verify-form').onsubmit = handleMFASetupVerify;
     document.getElementById('mfa-verify-login-form').onsubmit = handleMFAVerify;
+    document.getElementById('verify-email-code-form').onsubmit = handleEmailVerification;
+    document.getElementById('resend-code').onclick = function(e) {
+        e.preventDefault();
+        if (currentCognitoUser) {
+            currentCognitoUser.resendConfirmationCode(function(err, result) {
+                if (err) {
+                    showAuthMessage(err.message, 'error');
+                } else {
+                    showAuthMessage('Verification code resent to your email.', 'success');
+                }
+            });
+        }
+    };
 }
 
 function showForm(formId) {
-    const forms = ['signin-form', 'signup-form', 'mfa-setup-form', 'mfa-verify-form'];
+    const forms = ['signin-form', 'signup-form', 'mfa-setup-form', 'mfa-verify-form', 'verify-email-form'];
     forms.forEach(id => {
         document.getElementById(id).style.display = id === formId ? 'block' : 'none';
     });
@@ -192,6 +220,9 @@ function handleSignIn(e) {
         },
         totpRequired: function(challengeName, challengeParameters) {
             showForm('mfa-verify-form');
+        },
+        mfaSetup: function(challengeName, challengeParameters) {
+            setupMFA();
         }
     });
 }
@@ -223,41 +254,95 @@ function handleSignUp(e) {
         
         currentCognitoUser = result.user;
         
-        // Automatically sign in the user after signup
-        const authenticationData = {
-            Username: email,
-            Password: password
-        };
+        // Check if user needs confirmation (email verification)
+        if (!result.userConfirmed) {
+            // Show verification code form
+            showForm('verify-email-form');
+            showAuthMessage('A verification code has been sent to your email. Please enter it below.', 'success');
+            // Store credentials for auto-sign-in after verification
+            window._pendingSignIn = { email, password };
+        } else {
+            // User is auto-confirmed (e.g., by pre-signup trigger)
+            // Proceed to sign in for MFA setup
+            signInAfterSignUp(email, password);
+        }
+    });
+}
+
+function handleEmailVerification(e) {
+    e.preventDefault();
+    const code = document.getElementById('verify-code').value;
+    
+    if (!currentCognitoUser) {
+        showAuthMessage('Session expired. Please sign up again.', 'error');
+        showForm('signup-form');
+        return;
+    }
+    
+    currentCognitoUser.confirmRegistration(code, true, function(err, result) {
+        if (err) {
+            showAuthMessage(err.message, 'error');
+            return;
+        }
         
-        const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(authenticationData);
+        showAuthMessage('Email verified! Setting up your account...', 'success');
         
-        currentCognitoUser.authenticateUser(authenticationDetails, {
-            onSuccess: function(result) {
-                // This shouldn't happen with MFA required
-            },
-            onFailure: function(err) {
-                showAuthMessage(err.message, 'error');
-            },
-            mfaSetup: function(challengeName, challengeParameters) {
-                setupMFA();
-            },
-            totpRequired: function(challengeName, challengeParameters) {
-                setupMFA();
-            }
-        });
+        // Auto sign-in after verification
+        if (window._pendingSignIn) {
+            signInAfterSignUp(window._pendingSignIn.email, window._pendingSignIn.password);
+            window._pendingSignIn = null;
+        } else {
+            showForm('signin-form');
+            showAuthMessage('Email verified! Please sign in.', 'success');
+        }
+    });
+}
+
+function signInAfterSignUp(email, password) {
+    const authenticationData = {
+        Username: email,
+        Password: password
+    };
+    
+    const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(authenticationData);
+    const userData = {
+        Username: email,
+        Pool: userPool
+    };
+    
+    currentCognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+    
+    currentCognitoUser.authenticateUser(authenticationDetails, {
+        onSuccess: function(result) {
+            removeAuthOverlay();
+            addSignOutButton(email);
+        },
+        onFailure: function(err) {
+            showAuthMessage(err.message, 'error');
+            showForm('signin-form');
+        },
+        mfaSetup: function(challengeName, challengeParameters) {
+            setupMFA();
+        },
+        totpRequired: function(challengeName, challengeParameters) {
+            showForm('mfa-verify-form');
+        },
+        mfaRequired: function(challengeName, challengeParameters) {
+            showForm('mfa-verify-form');
+        }
     });
 }
 
 function setupMFA() {
     currentCognitoUser.associateSoftwareToken({
-        onSuccess: function(result) {
-            showAuthMessage('Account created! Now setup MFA.', 'success');
-            showForm('mfa-setup-form');
-        },
         onFailure: function(err) {
-            showAuthMessage(err.message, 'error');
+            showAuthMessage('Error setting up MFA: ' + err.message, 'error');
         },
         associateSecretCode: function(secretCode) {
+            // Show the MFA setup form with QR code
+            showForm('mfa-setup-form');
+            showAuthMessage('Scan the QR code with your authenticator app.', 'success');
+            
             const qrCodeUrl = `otpauth://totp/${encodeURIComponent(currentCognitoUser.getUsername())}?secret=${secretCode}&issuer=${encodeURIComponent('WA Visualizer')}`;
             
             // Generate QR code
@@ -274,11 +359,10 @@ function handleMFASetupVerify(e) {
     const code = document.getElementById('mfa-code').value;
     
     currentCognitoUser.verifySoftwareToken(code, 'MFA Setup', {
-        onSuccess: function(result) {
-            showAuthMessage('MFA setup complete! You can now sign in.', 'success');
-            setTimeout(() => {
-                showForm('signin-form');
-            }, 2000);
+        onSuccess: function(session) {
+            // MFA setup complete - user is now fully authenticated
+            removeAuthOverlay();
+            addSignOutButton(currentCognitoUser.getUsername());
         },
         onFailure: function(err) {
             showAuthMessage(err.message, 'error');

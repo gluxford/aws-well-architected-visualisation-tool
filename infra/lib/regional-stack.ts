@@ -36,6 +36,20 @@ export class RegionalStack extends cdk.Stack {
       autoDeleteObjects: true,
     });
 
+    // Allow CloudFront OAC access to the bucket (cross-region support)
+    websiteBucket.addToResourcePolicy(new iam.PolicyStatement({
+      sid: 'AllowCloudFrontServicePrincipalReadOnly',
+      effect: iam.Effect.ALLOW,
+      principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
+      actions: ['s3:GetObject'],
+      resources: [websiteBucket.arnForObjects('*')],
+      conditions: {
+        StringEquals: {
+          'AWS:SourceAccount': cdk.Stack.of(this).account,
+        },
+      },
+    }));
+
     this.s3BucketArn = websiteBucket.bucketArn;
     this.s3BucketDomainName = websiteBucket.bucketRegionalDomainName;
 
@@ -50,6 +64,7 @@ export class RegionalStack extends cdk.Stack {
       userPoolName: `${config.projectName}-user-pool`,
       selfSignUpEnabled: true,
       signInAliases: { email: true },
+      autoVerify: { email: true },
       mfa: mfaMapping[config.mfa],
       mfaSecondFactor: config.mfa !== 'off'
         ? { sms: false, otp: true }
@@ -57,6 +72,7 @@ export class RegionalStack extends cdk.Stack {
       passwordPolicy: {
         minLength: 8,
       },
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
