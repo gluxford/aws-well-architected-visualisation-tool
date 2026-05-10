@@ -1,0 +1,32 @@
+{
+  "WorkloadSummaries": [
+    {
+      "WorkloadId": "sample-workload-001",
+      "WorkloadArn": "arn:aws:wellarchitected:ap-southeast-2:123456789012:workload/sample-workload-001",
+      "WorkloadName": "E-Commerce Platform (Ops & Reliability Focused)",
+      "Owner": "123456789012",
+      "UpdatedAt": "2026-05-01T10:30:00Z",
+      "RiskCounts": {
+        "HIGH": 8,
+        "MEDIUM": 12,
+        "NONE": 28,
+        "UNANSWERED": 0,
+        "NOT_APPLICABLE": 7
+      }
+    },
+    {
+      "WorkloadId": "sample-workload-002",
+      "WorkloadArn": "arn:aws:wellarchitected:ap-southeast-2:123456789012:workload/sample-workload-002",
+      "WorkloadName": "Data Analytics Pipeline (Cost & Security Focused)",
+      "Owner": "123456789012",
+      "UpdatedAt": "2026-04-28T14:15:00Z",
+      "RiskCounts": {
+        "HIGH": 7,
+        "MEDIUM": 11,
+        "NONE": 26,
+        "UNANSWERED": 0,
+        "NOT_APPLICABLE": 8
+      }
+    }
+  ]
+}

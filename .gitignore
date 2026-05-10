@@ -1,10 +1,23 @@
+# CDK
+infra/cdk.out/
+infra/dist/
+infra/*.js
+infra/*.d.ts
+infra/**/*.js
+infra/**/*.d.ts
+!infra/jest.config.js
+
+# Dependencies
+node_modules/
+
 # Generated files
-lambda-function.zip
 *.zip
 
-# Temporary directories
-temp_lambda/
+# Python
 __pycache__/
+*.pyc
+.pytest_cache/
+.hypothesis/
 
 # System files
 .DS_Store
@@ -22,7 +35,3 @@ Thumbs.db
 # Environment files
 .env
 .env.local
-
-# Test files
-test-*
-*-test.py

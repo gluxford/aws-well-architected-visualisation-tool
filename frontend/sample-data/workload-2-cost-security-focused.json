@@ -1,0 +1,148 @@
+{
+  "workloadId": "sample-workload-002",
+  "workloadName": "Data Analytics Pipeline (Cost & Security Focused)",
+  "workloadArn": "arn:aws:wellarchitected:ap-southeast-2:123456789012:workload/sample-workload-002",
+  "description": "Data analytics pipeline with strong cost optimization and balanced security/performance but poor reliability and sustainability",
+  "environment": "PRODUCTION",
+  "ownerName": "Data Engineering Team",
+  "accountIds": ["123456789012"],
+  "regions": ["us-east-1", "eu-west-1"],
+  "industry": "Technology",
+  "updatedAt": "2026-04-28T14:15:00Z",
+  "riskCounts": {
+    "high": 7,
+    "medium": 11,
+    "compliant": 26,
+    "unanswered": 0,
+    "notApplicable": 8
+  },
+  "overallCompliance": 59,
+  "pillars": [
+    {
+      "id": "operationalExcellence",
+      "name": "Operational Excellence",
+      "riskCounts": {
+        "HIGH": 1,
+        "MEDIUM": 3,
+        "NONE": 4,
+        "UNANSWERED": 0,
+        "NOT_APPLICABLE": 2
+      },
+      "compliance": 50
+    },
+    {
+      "id": "security",
+      "name": "Security",
+      "riskCounts": {
+        "HIGH": 1,
+        "MEDIUM": 2,
+        "NONE": 6,
+        "UNANSWERED": 0,
+        "NOT_APPLICABLE": 2
+      },
+      "compliance": 67
+    },
+    {
+      "id": "reliability",
+      "name": "Reliability",
+      "riskCounts": {
+        "HIGH": 3,
+        "MEDIUM": 3,
+        "NONE": 3,
+        "UNANSWERED": 0,
+        "NOT_APPLICABLE": 1
+      },
+      "compliance": 33
+    },
+    {
+      "id": "performanceEfficiency",
+      "name": "Performance Efficiency",
+      "riskCounts": {
+        "HIGH": 1,
+        "MEDIUM": 2,
+        "NONE": 5,
+        "UNANSWERED": 0,
+        "NOT_APPLICABLE": 2
+      },
+      "compliance": 63
+    },
+    {
+      "id": "costOptimization",
+      "name": "Cost Optimization",
+      "riskCounts": {
+        "HIGH": 0,
+        "MEDIUM": 1,
+        "NONE": 7,
+        "UNANSWERED": 0,
+        "NOT_APPLICABLE": 1
+      },
+      "compliance": 88
+    },
+    {
+      "id": "sustainability",
+      "name": "Sustainability",
+      "riskCounts": {
+        "HIGH": 1,
+        "MEDIUM": 0,
+        "NONE": 1,
+        "UNANSWERED": 0,
+        "NOT_APPLICABLE": 0
+      },
+      "compliance": 50
+    }
+  ],
+  "lensVersion": "2024-04-01",
+  "lensStatus": "CURRENT",
+  "hasUnansweredQuestions": false,
+  "recommendations": [
+    {
+      "title": "How do you plan your network topology?",
+      "pillarName": "Reliability",
+      "risk": "HIGH",
+      "improvementPlan": "Implement multi-AZ architecture with redundant network paths and use AWS Transit Gateway for centralized routing.",
+      "improvementPlanUrl": "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_planning_network_topology.html"
+    },
+    {
+      "title": "How do you design your workload to withstand component failures?",
+      "pillarName": "Reliability",
+      "risk": "HIGH",
+      "improvementPlan": "Implement circuit breakers, retry logic with exponential backoff, and graceful degradation patterns.",
+      "improvementPlanUrl": "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_withstand_component_failures.html"
+    },
+    {
+      "title": "How do you test reliability?",
+      "pillarName": "Reliability",
+      "risk": "HIGH",
+      "improvementPlan": "Implement chaos engineering practices using AWS Fault Injection Simulator and run regular game days.",
+      "improvementPlanUrl": "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_test_reliability.html"
+    },
+    {
+      "title": "How do you select and use cloud resources in a way that reduces sustainability impact?",
+      "pillarName": "Sustainability",
+      "risk": "HIGH",
+      "improvementPlan": "Use managed services, Graviton processors, and schedule non-production workloads to run only during business hours.",
+      "improvementPlanUrl": "https://docs.aws.amazon.com/wellarchitected/latest/sustainability-pillar/sus_sus_hardware.html"
+    },
+    {
+      "title": "How do you protect your data in transit?",
+      "pillarName": "Security",
+      "risk": "HIGH",
+      "improvementPlan": "Enforce TLS 1.2+ for all data in transit and use VPC endpoints for AWS service communication.",
+      "improvementPlanUrl": "https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/sec_protect_data_transit.html"
+    },
+    {
+      "title": "How do you prepare for an event that affects availability?",
+      "pillarName": "Operational Excellence",
+      "risk": "HIGH",
+      "improvementPlan": "Create and regularly test runbooks for common failure scenarios and implement automated incident response.",
+      "improvementPlanUrl": "https://docs.aws.amazon.com/wellarchitected/latest/operational-excellence-pillar/ops_event_response.html"
+    },
+    {
+      "title": "How do you use compute resources efficiently?",
+      "pillarName": "Performance Efficiency",
+      "risk": "HIGH",
+      "improvementPlan": "Implement auto-scaling policies based on demand patterns and use Spot Instances for fault-tolerant batch processing.",
+      "improvementPlanUrl": "https://docs.aws.amazon.com/wellarchitected/latest/performance-efficiency-pillar/perf_compute_efficient.html"
+    }
+  ]
+}
