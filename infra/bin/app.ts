@@ -21,6 +21,7 @@ const regionalStack = new RegionalStack(app, `${config.projectName}-regional`, {
   allowedOrigin: config.customDomain
     ? `https://${config.customDomain.domainName}`
     : undefined,
+  crossRegionReferences: true,
   env: {
     region: config.primaryRegion,
   },
@@ -34,6 +35,7 @@ const globalStack = new GlobalStack(app, `${config.projectName}-global`, {
   cognitoUserPoolId: regionalStack.cognitoUserPoolId,
   cognitoClientId: regionalStack.cognitoClientId,
   apiUrl: regionalStack.apiUrl,
+  crossRegionReferences: true,
   env: {
     region: 'us-east-1',
   },
