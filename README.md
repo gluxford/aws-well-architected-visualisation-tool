@@ -30,9 +30,83 @@ A configurable, open-source tool for visualizing AWS Well-Architected Framework 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) >= 18.x
+- [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 - [AWS CDK CLI](https://docs.aws.amazon.com/cdk/v2/guide/cli.html) (`npm install -g aws-cdk`)
-- AWS credentials configured (via environment variables, `~/.aws/credentials`, or SSO)
-- CDK bootstrapped in your target regions: `cdk bootstrap aws://ACCOUNT/REGION`
+- An AWS account with appropriate permissions
+- CDK bootstrapped in your target regions (see below)
+
+## AWS Authentication
+
+This project uses standard AWS credential resolution. The most common approach for organizations is AWS IAM Identity Center (SSO).
+
+### Option 1: AWS SSO (Recommended for organizations)
+
+1. Configure an SSO profile (one-time setup):
+
+```bash
+aws configure sso
+# Follow the prompts:
+#   SSO session name: my-session
+#   SSO start URL: https://your-org.awsapps.com/start
+#   SSO region: your-sso-region (e.g. ap-southeast-2)
+#   Choose your account and role
+#   CLI default output format: json
+#   CLI profile name: my-profile
+```
+
+2. Log in before running CDK commands:
+
+```bash
+aws sso login --profile my-profile
+```
+
+3. Pass the profile to all CDK commands using `--profile`:
+
+```bash
+cdk deploy --all --profile my-profile
+```
+
+Or export it for the session so you don't need to repeat it:
+
+```bash
+export AWS_PROFILE=my-profile
+cdk deploy --all
+```
+
+### Option 2: IAM Access Keys
+
+If you have long-lived access keys configured in `~/.aws/credentials`:
+
+```bash
+# Uses the [default] profile automatically
+cdk deploy --all
+
+# Or specify a named profile
+cdk deploy --all --profile my-profile
+```
+
+### Option 3: Environment Variables
+
+```bash
+export AWS_ACCESS_KEY_ID=AKIA...
+export AWS_SECRET_ACCESS_KEY=...
+export AWS_REGION=ap-southeast-2
+cdk deploy --all
+```
+
+### Bootstrapping CDK
+
+Before your first deployment, bootstrap CDK in each region you'll use. This creates the staging resources CDK needs:
+
+```bash
+# Bootstrap your primary region
+cdk bootstrap aws://ACCOUNT_ID/REGION --profile my-profile
+
+# Bootstrap us-east-1 (required for CloudFront)
+cdk bootstrap aws://ACCOUNT_ID/us-east-1 --profile my-profile
+```
+
+Replace `ACCOUNT_ID` with your 12-digit AWS account ID and `REGION` with your chosen `primaryRegion`.
 
 ## Quick Start
 
@@ -44,11 +118,14 @@ npm install
 # Review/edit configuration
 # Edit infra/cdk.json → context.config
 
+# Log in (if using SSO)
+aws sso login --profile my-profile
+
 # Deploy all stacks
-cdk deploy --all
+cdk deploy --all --profile my-profile
 
 # Destroy all resources when done
-cdk destroy --all
+cdk destroy --all --profile my-profile
 ```
 
 ## Configuration
@@ -106,9 +183,16 @@ All configuration is in `infra/cdk.json` under `context.config`:
 
 ## Deployment Commands
 
+All commands below assume you're in the `infra/` directory. Add `--profile my-profile` if not using `AWS_PROFILE` env var.
+
 ```bash
-# Synthesize CloudFormation templates (dry run)
-cd infra && cdk synth
+cd infra
+
+# Synthesize CloudFormation templates (dry run, no AWS calls)
+cdk synth
+
+# Preview what will change before deploying
+cdk diff
 
 # Deploy all stacks
 cdk deploy --all
@@ -116,9 +200,6 @@ cdk deploy --all
 # Deploy a specific stack
 cdk deploy wa-visualizer-regional
 cdk deploy wa-visualizer-global
-
-# View differences before deploying
-cdk diff
 
 # Destroy all resources
 cdk destroy --all
@@ -131,6 +212,67 @@ cdk destroy --all
 3. **GlobalStack generates** `runtime-config.json` with Cognito IDs, API URL, and settings
 4. **Frontend assets** + config are uploaded to S3 with CloudFront cache invalidation
 5. **Users access** the app via CloudFront URL, authenticate via Cognito, and view WA reports
+
+## Demo Mode
+
+You can preview the visualizer without deploying to AWS. Open `frontend/demo.html` in your browser — it uses embedded sample workload data and requires no backend or credentials.
+
+Two sample workloads are included:
+- **E-Commerce Platform** — strong Operational Excellence & Reliability, poor Cost Optimization & Security
+- **Data Analytics Pipeline** — strong Cost Optimization, balanced Security & Performance, poor Reliability & Sustainability
+
+## Security Scanning
+
+Before running `npm install`, audit dependencies for known vulnerabilities:
+
+```bash
+cd infra
+
+# Basic vulnerability check (built into npm)
+npm audit
+
+# Fix auto-fixable vulnerabilities
+npm audit fix
+```
+
+For deeper supply chain analysis (typosquatting, install scripts, maintainer changes), use [Socket.dev](https://socket.dev):
+
+```bash
+# Install Socket CLI (one-time)
+npm install -g @socketsecurity/cli
+
+# Login (requires free Socket.dev account)
+socket login
+
+# Run a full scan
+socket scan create .
+
+# Or wrap npm install with Socket protection
+socket npm install
+```
+
+### Current Dependency Status
+
+All direct dependencies are well-known, actively maintained packages:
+
+| Package | Purpose | Publisher |
+|---------|---------|-----------|
+| `aws-cdk-lib` | AWS CDK constructs | AWS |
+| `constructs` | CDK construct base | AWS |
+| `typescript` | TypeScript compiler | Microsoft |
+| `ts-node` | TypeScript execution | Community (widely used) |
+| `jest` / `ts-jest` | Testing framework | Meta/Community |
+| `fast-check` | Property-based testing | Community (widely used) |
+
+**Known advisory:** `fast-uri` (bundled inside `aws-cdk-lib`) has a path traversal vulnerability. This is a build-time dependency only — it does not run in deployed Lambda functions or the frontend. It will be resolved when AWS publishes an updated `aws-cdk-lib`.
+
+## Troubleshooting
+
+**"Unable to resolve AWS account"** — Your credentials have expired. Run `aws sso login --profile my-profile` again.
+
+**"CDKToolkit stack not found"** — You haven't bootstrapped CDK in that region. Run `cdk bootstrap aws://ACCOUNT/REGION --profile my-profile`.
+
+**"Access Denied" during deploy** — Your SSO role may not have sufficient permissions. You need permissions to create S3, Lambda, API Gateway, Cognito, CloudFront, and IAM resources.
 
 ## License
 
