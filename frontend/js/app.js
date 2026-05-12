@@ -416,11 +416,11 @@ function displayRecommendations(recommendations) {
         const guidanceId = `guidance-${index}`;
         const guidanceSection = rec.improvementPlanUrl ? `
             <div class="mt-3">
-                <button class="btn btn-sm btn-outline-primary" type="button" onclick="toggleGuidance('${guidanceId}', '${rec.improvementPlanUrl}')">
+                <button class="btn btn-sm" type="button" onclick="toggleGuidance('${guidanceId}', '${rec.improvementPlanUrl}')" style="background: transparent; border: 1px solid #00d4ff; color: #00d4ff;">
                     <span id="btn-text-${guidanceId}">Show Detailed Guidance</span>
                 </button>
                 <div id="${guidanceId}" class="mt-2" style="display: none;">
-                    <div class="p-3 border rounded" style="background-color: #2a2a2a; border-color: #444 !important;">
+                    <div style="padding: 15px; background-color: #3a3a3a; border: 1px solid #444; border-radius: 6px;">
                         <div id="guidance-content-${guidanceId}" style="color: #e0e0e0;">Loading guidance...</div>
                     </div>
                 </div>
@@ -496,12 +496,11 @@ async function toggleGuidance(guidanceId, guidanceUrl) {
                     );
                     
                     if (uniqueLinks.length > 0) {
-                        let linksHtml = '<h6>Remediation Resources</h6><ul class="list-unstyled">';
+                        let linksHtml = '<h6 style="color: #00d4ff;">Remediation Resources</h6><ul class="list-unstyled">';
                         uniqueLinks.slice(0, 10).forEach(link => { // Limit to first 10 links
                             linksHtml += `
                                 <li class="mb-2">
-                                    <a href="${link.href}" target="_blank" class="text-decoration-none">
-                                        <i class="fas fa-external-link-alt text-muted me-1"></i>
+                                    <a href="${link.href}" target="_blank" style="color: #00d4ff; text-decoration: none;">
                                         ${link.text}
                                     </a>
                                 </li>
@@ -512,9 +511,9 @@ async function toggleGuidance(guidanceId, guidanceUrl) {
                         contentDiv.innerHTML = `
                             <div class="guidance-content">
                                 ${linksHtml}
-                                <div class="mt-3 pt-3 border-top">
-                                    <small class="text-muted">
-                                        <a href="${guidanceUrl}" target="_blank">View complete guidance on AWS</a>
+                                <div class="mt-3 pt-3" style="border-top: 1px solid #444;">
+                                    <small style="color: #aaa;">
+                                        <a href="${guidanceUrl}" target="_blank" style="color: #00d4ff;">View complete guidance on AWS</a>
                                     </small>
                                 </div>
                             </div>
@@ -523,10 +522,10 @@ async function toggleGuidance(guidanceId, guidanceUrl) {
                         // Fallback if no links found
                         contentDiv.innerHTML = `
                             <div class="guidance-content">
-                                <h6>AWS Well-Architected Guidance</h6>
-                                <p>No specific remediation links could be extracted from this guidance page.</p>
-                                <a href="${guidanceUrl}" target="_blank" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-external-link-alt"></i> View Full Guidance
+                                <h6 style="color: #00d4ff;">AWS Well-Architected Guidance</h6>
+                                <p style="color: #e0e0e0;">No specific remediation links could be extracted from this guidance page.</p>
+                                <a href="${guidanceUrl}" target="_blank" class="btn btn-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                                    View Full Guidance
                                 </a>
                             </div>
                         `;
@@ -539,15 +538,15 @@ async function toggleGuidance(guidanceId, guidanceUrl) {
                 // Fallback content
                 contentDiv.innerHTML = `
                     <div class="guidance-content">
-                        <h6>AWS Well-Architected Guidance</h6>
-                        <p>Unable to load remediation links directly. Please visit the AWS guidance page:</p>
-                        <a href="${guidanceUrl}" target="_blank" class="btn btn-primary btn-sm">
-                            <i class="fas fa-external-link-alt"></i> Open AWS Guidance
+                        <h6 style="color: #00d4ff;">AWS Well-Architected Guidance</h6>
+                        <p style="color: #e0e0e0;">Unable to load remediation links directly. Please visit the AWS guidance page:</p>
+                        <a href="${guidanceUrl}" target="_blank" class="btn btn-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                            Open AWS Guidance
                         </a>
                         <div class="mt-3">
-                            <small class="text-muted">
+                            <small style="color: #aaa;">
                                 The guidance page typically includes:
-                                <ul class="mt-2">
+                                <ul class="mt-2" style="color: #e0e0e0;">
                                     <li>Implementation steps and best practices</li>
                                     <li>AWS service recommendations</li>
                                     <li>Code examples and configuration templates</li>

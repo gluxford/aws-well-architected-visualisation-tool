@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="1200" height="700">
+  <defs>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+    <linearGradient id="greenGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#2ed573"/>
+      <stop offset="100%" style="stop-color:#17a2b8"/>
+    </linearGradient>
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ffa502"/>
+      <stop offset="100%" style="stop-color:#ff6b6b"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="700" fill="#1a1a1a"/>
+  
+  <!-- Title -->
+  <text x="600" y="45" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#00d4ff" filter="url(#glow)">AWS Well-Architected Report Visualizer — Architecture</text>
+  
+  <!-- User -->
+  <circle cx="100" cy="350" r="30" fill="none" stroke="#00d4ff" stroke-width="2"/>
+  <text x="100" y="345" text-anchor="middle" font-family="Arial" font-size="20" fill="#00d4ff">👤</text>
+  <text x="100" y="375" text-anchor="middle" font-family="Arial" font-size="11" fill="#e0e0e0">User</text>
+  
+  <!-- GlobalStack Box (us-east-1) -->
+  <rect x="200" y="70" width="450" height="260" rx="12" fill="none" stroke="#764ba2" stroke-width="2" stroke-dasharray="8,4"/>
+  <text x="425" y="95" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="#764ba2">GlobalStack (us-east-1)</text>
+  
+  <!-- CloudFront -->
+  <rect x="250" y="120" width="160" height="60" rx="8" fill="#2a2a2a" stroke="#00d4ff" stroke-width="2"/>
+  <text x="330" y="148" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#00d4ff">CloudFront</text>
+  <text x="330" y="165" text-anchor="middle" font-family="Arial" font-size="10" fill="#aaa">CDN + HTTPS</text>
+  
+  <!-- S3 Deploy -->
+  <rect x="450" y="120" width="160" height="60" rx="8" fill="#2a2a2a" stroke="#2ed573" stroke-width="2"/>
+  <text x="530" y="148" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#2ed573">S3 Deployment</text>
+  <text x="530" y="165" text-anchor="middle" font-family="Arial" font-size="10" fill="#aaa">Frontend + Config</text>
+  
+  <!-- Runtime Config -->
+  <rect x="450" y="220" width="160" height="60" rx="8" fill="#2a2a2a" stroke="#ffa502" stroke-width="2"/>
+  <text x="530" y="248" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#ffa502">runtime-config.json</text>
+  <text x="530" y="265" text-anchor="middle" font-family="Arial" font-size="10" fill="#aaa">Cognito IDs, API URL</text>
+  
+  <!-- RegionalStack Box -->
+  <rect x="200" y="370" width="950" height="280" rx="12" fill="none" stroke="#667eea" stroke-width="2" stroke-dasharray="8,4"/>
+  <text x="675" y="395" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="#667eea">RegionalStack (configurable region)</text>
+  
+  <!-- S3 Bucket -->
+  <rect x="250" y="420" width="150" height="60" rx="8" fill="#2a2a2a" stroke="#2ed573" stroke-width="2"/>
+  <text x="325" y="448" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#2ed573">S3 Bucket</text>
+  <text x="325" y="465" text-anchor="middle" font-family="Arial" font-size="10" fill="#aaa">Frontend Assets</text>
+  
+  <!-- Cognito -->
+  <rect x="450" y="420" width="150" height="60" rx="8" fill="#2a2a2a" stroke="#ff6b6b" stroke-width="2"/>
+  <text x="525" y="448" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#ff6b6b">Cognito</text>
+  <text x="525" y="465" text-anchor="middle" font-family="Arial" font-size="10" fill="#aaa">User Pool + MFA</text>
+  
+  <!-- API Gateway -->
+  <rect x="650" y="420" width="150" height="60" rx="8" fill="#2a2a2a" stroke="#00d4ff" stroke-width="2"/>
+  <text x="725" y="448" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#00d4ff">API Gateway</text>
+  <text x="725" y="465" text-anchor="middle" font-family="Arial" font-size="10" fill="#aaa">REST /proxy</text>
+  
+  <!-- Proxy Lambda -->
+  <rect x="850" y="420" width="150" height="60" rx="8" fill="#2a2a2a" stroke="#ffa502" stroke-width="2"/>
+  <text x="925" y="448" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#ffa502">Proxy Lambda</text>
+  <text x="925" y="465" text-anchor="middle" font-family="Arial" font-size="10" fill="#aaa">Python 3.12</text>
+  
+  <!-- PreSignup Lambda -->
+  <rect x="450" y="530" width="150" height="60" rx="8" fill="#2a2a2a" stroke="#4ecdc4" stroke-width="2" stroke-dasharray="4,3"/>
+  <text x="525" y="558" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#4ecdc4">PreSignup λ</text>
+  <text x="525" y="575" text-anchor="middle" font-family="Arial" font-size="10" fill="#aaa">(optional)</text>
+  
+  <!-- WA API -->
+  <rect x="850" y="530" width="150" height="60" rx="8" fill="#2a2a2a" stroke="url(#orangeGrad)" stroke-width="2"/>
+  <text x="925" y="553" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#ff6b6b">Well-Architected</text>
+  <text x="925" y="570" text-anchor="middle" font-family="Arial" font-size="10" fill="#aaa">AWS API</text>
+  
+  <!-- CDK Config -->
+  <rect x="700" y="80" width="180" height="70" rx="8" fill="#2a2a2a" stroke="#4ecdc4" stroke-width="2"/>
+  <text x="790" y="108" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#4ecdc4">cdk.json Config</text>
+  <text x="790" y="125" text-anchor="middle" font-family="Arial" font-size="9" fill="#aaa">projectName, region,</text>
+  <text x="790" y="138" text-anchor="middle" font-family="Arial" font-size="9" fill="#aaa">MFA, email, domain</text>
+  
+  <!-- CDK Deploy -->
+  <rect x="940" y="80" width="180" height="70" rx="8" fill="#2a2a2a" stroke="url(#headerGrad)" stroke-width="2"/>
+  <text x="1030" y="108" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#667eea">CDK Deploy</text>
+  <text x="1030" y="128" text-anchor="middle" font-family="Arial" font-size="10" fill="#aaa">cdk deploy --all</text>
+  <text x="1030" y="142" text-anchor="middle" font-family="Arial" font-size="9" fill="#aaa">Infrastructure as Code</text>
+  
+  <!-- Arrows -->
+  <!-- User -> CloudFront -->
+  <line x1="130" y1="340" x2="248" y2="150" stroke="#00d4ff" stroke-width="2" marker-end="url(#arrowCyan)"/>
+  
+  <!-- CloudFront -> S3 -->
+  <line x1="330" y1="180" x2="325" y2="418" stroke="#2ed573" stroke-width="1.5" stroke-dasharray="4,3"/>
+  
+  <!-- S3Deploy -> S3 -->
+  <line x1="530" y1="180" x2="370" y2="418" stroke="#2ed573" stroke-width="1.5" stroke-dasharray="4,3"/>
+  
+  <!-- User -> Cognito (auth) -->
+  <line x1="130" y1="360" x2="448" y2="450" stroke="#ff6b6b" stroke-width="1.5"/>
+  
+  <!-- Cognito -> PreSignup -->
+  <line x1="525" y1="480" x2="525" y2="528" stroke="#4ecdc4" stroke-width="1.5" stroke-dasharray="4,3"/>
+  
+  <!-- User -> API GW -->
+  <line x1="130" y1="365" x2="648" y2="450" stroke="#00d4ff" stroke-width="1.5"/>
+  
+  <!-- API GW -> Proxy Lambda -->
+  <line x1="800" y1="450" x2="848" y2="450" stroke="#ffa502" stroke-width="2"/>
+  
+  <!-- Proxy Lambda -> WA API -->
+  <line x1="925" y1="480" x2="925" y2="528" stroke="#ff6b6b" stroke-width="2"/>
+  
+  <!-- Config -> Both stacks -->
+  <line x1="790" y1="150" x2="600" y2="370" stroke="#4ecdc4" stroke-width="1" stroke-dasharray="4,3"/>
+  
+  <!-- CDK -> Both stacks -->
+  <line x1="1030" y1="150" x2="900" y2="370" stroke="#667eea" stroke-width="1" stroke-dasharray="4,3"/>
+  
+  <!-- Arrow markers -->
+  <defs>
+    <marker id="arrowCyan" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#00d4ff"/>
+    </marker>
+  </defs>
+  
+  <!-- Legend -->
+  <rect x="30" y="620" width="1140" height="60" rx="8" fill="#2a2a2a" stroke="#444" stroke-width="1"/>
+  <text x="60" y="645" font-family="Arial" font-size="11" font-weight="bold" fill="#e0e0e0">Legend:</text>
+  <rect x="120" y="635" width="12" height="12" fill="none" stroke="#00d4ff" stroke-width="2"/>
+  <text x="138" y="646" font-family="Arial" font-size="10" fill="#e0e0e0">User-facing</text>
+  <rect x="230" y="635" width="12" height="12" fill="none" stroke="#2ed573" stroke-width="2"/>
+  <text x="248" y="646" font-family="Arial" font-size="10" fill="#e0e0e0">Storage</text>
+  <rect x="320" y="635" width="12" height="12" fill="none" stroke="#ff6b6b" stroke-width="2"/>
+  <text x="338" y="646" font-family="Arial" font-size="10" fill="#e0e0e0">Auth</text>
+  <rect x="390" y="635" width="12" height="12" fill="none" stroke="#ffa502" stroke-width="2"/>
+  <text x="408" y="646" font-family="Arial" font-size="10" fill="#e0e0e0">Compute</text>
+  <rect x="490" y="635" width="12" height="12" fill="none" stroke="#4ecdc4" stroke-width="2"/>
+  <text x="508" y="646" font-family="Arial" font-size="10" fill="#e0e0e0">Config</text>
+  <rect x="580" y="635" width="12" height="12" fill="none" stroke="#764ba2" stroke-width="2"/>
+  <text x="598" y="646" font-family="Arial" font-size="10" fill="#e0e0e0">Global (us-east-1)</text>
+  <rect x="720" y="635" width="12" height="12" fill="none" stroke="#667eea" stroke-width="2"/>
+  <text x="738" y="646" font-family="Arial" font-size="10" fill="#e0e0e0">Regional (your region)</text>
+  <line x1="890" y1="641" x2="920" y2="641" stroke="#aaa" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="928" y="646" font-family="Arial" font-size="10" fill="#e0e0e0">Optional/Internal</text>
+</svg>

@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 600" width="1400" height="600">
+  <defs>
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff"/>
+      <stop offset="100%" style="stop-color:#4ecdc4"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrowWhite" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#e0e0e0"/>
+    </marker>
+    <marker id="arrowCyan" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#00d4ff"/>
+    </marker>
+    <marker id="arrowOrange" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#ffa502"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#2ed573"/>
+    </marker>
+    <marker id="arrowPink" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#ff6b6b"/>
+    </marker>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1400" height="600" fill="#1a1a1a"/>
+  
+  <!-- Title -->
+  <text x="700" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#00d4ff" filter="url(#glow)">User Flow — AWS Well-Architected Report Visualizer</text>
+
+  <!-- ===== SERVICE ICONS (simplified AWS-style) ===== -->
+
+  <!-- User Icon -->
+  <g transform="translate(80, 250)">
+    <circle cx="40" cy="20" r="18" fill="none" stroke="#00d4ff" stroke-width="2.5"/>
+    <path d="M10,70 Q40,50 70,70 L70,80 Q40,85 10,80 Z" fill="none" stroke="#00d4ff" stroke-width="2.5"/>
+    <text x="40" y="105" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="#e0e0e0">User</text>
+  </g>
+
+  <!-- CloudFront Icon -->
+  <g transform="translate(270, 230)">
+    <circle cx="45" cy="40" r="38" fill="#2a2a2a" stroke="#8b5cf6" stroke-width="2.5"/>
+    <circle cx="45" cy="40" r="15" fill="none" stroke="#a78bfa" stroke-width="2"/>
+    <circle cx="45" cy="40" r="28" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <line x1="45" y1="2" x2="45" y2="78" stroke="#a78bfa" stroke-width="1" opacity="0.5"/>
+    <line x1="7" y1="40" x2="83" y2="40" stroke="#a78bfa" stroke-width="1" opacity="0.5"/>
+    <text x="45" y="100" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="#a78bfa">CloudFront</text>
+  </g>
+
+  <!-- S3 Icon -->
+  <g transform="translate(270, 400)">
+    <rect x="10" y="10" width="70" height="55" rx="6" fill="#2a2a2a" stroke="#2ed573" stroke-width="2.5"/>
+    <text x="45" y="32" text-anchor="middle" font-family="Arial" font-size="20" fill="#2ed573">🪣</text>
+    <text x="45" y="52" text-anchor="middle" font-family="Arial" font-size="10" fill="#aaa">index.html</text>
+    <text x="45" y="85" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="#2ed573">S3</text>
+  </g>
+
+  <!-- Cognito Icon -->
+  <g transform="translate(470, 230)">
+    <rect x="5" y="5" width="80" height="70" rx="10" fill="#2a2a2a" stroke="#ff6b6b" stroke-width="2.5"/>
+    <text x="45" y="35" text-anchor="middle" font-family="Arial" font-size="18" fill="#ff6b6b">🔐</text>
+    <text x="45" y="55" text-anchor="middle" font-family="Arial" font-size="9" fill="#aaa">Auth + MFA</text>
+    <text x="45" y="95" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="#ff6b6b">Cognito</text>
+  </g>
+
+  <!-- API Gateway Icon -->
+  <g transform="translate(680, 230)">
+    <rect x="5" y="5" width="80" height="70" rx="10" fill="#2a2a2a" stroke="#00d4ff" stroke-width="2.5"/>
+    <text x="45" y="35" text-anchor="middle" font-family="Arial" font-size="18" fill="#00d4ff">🌐</text>
+    <text x="45" y="55" text-anchor="middle" font-family="Arial" font-size="9" fill="#aaa">REST API</text>
+    <text x="45" y="95" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="#00d4ff">API Gateway</text>
+  </g>
+
+  <!-- Lambda Icon -->
+  <g transform="translate(890, 230)">
+    <rect x="5" y="5" width="80" height="70" rx="10" fill="#2a2a2a" stroke="#ffa502" stroke-width="2.5"/>
+    <text x="45" y="38" text-anchor="middle" font-family="Arial" font-size="22" font-weight="bold" fill="#ffa502">λ</text>
+    <text x="45" y="58" text-anchor="middle" font-family="Arial" font-size="9" fill="#aaa">Proxy</text>
+    <text x="45" y="95" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="#ffa502">Lambda</text>
+  </g>
+
+  <!-- Well-Architected API Icon -->
+  <g transform="translate(1100, 230)">
+    <rect x="0" y="5" width="90" height="70" rx="10" fill="#2a2a2a" stroke="#ff6b6b" stroke-width="2.5"/>
+    <text x="45" y="35" text-anchor="middle" font-family="Arial" font-size="16" fill="#ff6b6b">📊</text>
+    <text x="45" y="55" text-anchor="middle" font-family="Arial" font-size="8" fill="#aaa">Well-Architected</text>
+    <text x="45" y="95" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="#ff6b6b">WA Tool API</text>
+  </g>
+
+  <!-- ===== FLOW ARROWS ===== -->
+
+  <!-- Step 1: User -> CloudFront -->
+  <line x1="160" y1="275" x2="268" y2="270" stroke="#e0e0e0" stroke-width="2.5" marker-end="url(#arrowWhite)"/>
+  <rect x="185" y="245" width="20" height="18" rx="9" fill="#667eea"/>
+  <text x="195" y="258" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="white">1</text>
+
+  <!-- Step 2: CloudFront -> S3 -->
+  <line x1="315" y1="310" x2="315" y2="398" stroke="#2ed573" stroke-width="2" marker-end="url(#arrowGreen)"/>
+  <rect x="305" y="345" width="20" height="18" rx="9" fill="#2ed573"/>
+  <text x="315" y="358" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="white">2</text>
+
+  <!-- Step 3: User -> Cognito (auth) -->
+  <path d="M160,285 Q350,180 468,265" fill="none" stroke="#ff6b6b" stroke-width="2" marker-end="url(#arrowPink)"/>
+  <rect x="310" y="195" width="20" height="18" rx="9" fill="#ff6b6b"/>
+  <text x="320" y="208" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="white">3</text>
+
+  <!-- Step 4: Frontend -> API Gateway -->
+  <line x1="555" y1="270" x2="678" y2="270" stroke="#00d4ff" stroke-width="2.5" marker-end="url(#arrowCyan)"/>
+  <rect x="605" y="252" width="20" height="18" rx="9" fill="#00d4ff"/>
+  <text x="615" y="265" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="white">4</text>
+
+  <!-- Step 5: API GW -> Lambda -->
+  <line x1="765" y1="270" x2="888" y2="270" stroke="#ffa502" stroke-width="2.5" marker-end="url(#arrowOrange)"/>
+  <rect x="815" y="252" width="20" height="18" rx="9" fill="#ffa502"/>
+  <text x="825" y="265" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="white">5</text>
+
+  <!-- Step 6: Lambda -> WA API -->
+  <line x1="975" y1="270" x2="1098" y2="270" stroke="#ff6b6b" stroke-width="2.5" marker-end="url(#arrowPink)"/>
+  <rect x="1025" y="252" width="20" height="18" rx="9" fill="#ff6b6b"/>
+  <text x="1035" y="265" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="white">6</text>
+
+  <!-- ===== FLOW DESCRIPTION ===== -->
+  <rect x="80" y="480" width="1240" height="100" rx="10" fill="#2a2a2a" stroke="#444" stroke-width="1"/>
+  
+  <circle cx="120" cy="510" r="11" fill="#667eea"/>
+  <text x="120" y="514" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="white">1</text>
+  <text x="140" y="514" font-family="Arial" font-size="11" fill="#e0e0e0">User visits CloudFront URL</text>
+
+  <circle cx="120" cy="538" r="11" fill="#2ed573"/>
+  <text x="120" y="542" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="white">2</text>
+  <text x="140" y="542" font-family="Arial" font-size="11" fill="#e0e0e0">CloudFront serves frontend from S3 (OAC)</text>
+
+  <circle cx="120" cy="566" r="11" fill="#ff6b6b"/>
+  <text x="120" y="570" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="white">3</text>
+  <text x="140" y="570" font-family="Arial" font-size="11" fill="#e0e0e0">User authenticates via Cognito (email + MFA)</text>
+
+  <circle cx="550" cy="510" r="11" fill="#00d4ff"/>
+  <text x="550" y="514" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="white">4</text>
+  <text x="570" y="514" font-family="Arial" font-size="11" fill="#e0e0e0">Frontend calls API Gateway with auth token</text>
+
+  <circle cx="550" cy="538" r="11" fill="#ffa502"/>
+  <text x="550" y="542" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="white">5</text>
+  <text x="570" y="542" font-family="Arial" font-size="11" fill="#e0e0e0">API Gateway invokes Proxy Lambda</text>
+
+  <circle cx="550" cy="566" r="11" fill="#ff6b6b"/>
+  <text x="550" y="570" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="white">6</text>
+  <text x="570" y="570" font-family="Arial" font-size="11" fill="#e0e0e0">Lambda queries Well-Architected Tool API and returns report data</text>
+</svg>
