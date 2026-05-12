@@ -382,7 +382,7 @@ function handleMFAVerify(e) {
         onFailure: function(err) {
             showAuthMessage(err.message, 'error');
         }
-    });
+    }, 'SOFTWARE_TOKEN_MFA');
 }
 
 function showAuthMessage(message, type) {
